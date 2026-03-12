@@ -128,7 +128,7 @@ export default function MainLayout() {
       </div>
 
       {/* Main content */}
-      <div className={`lg:pl-64 transition-all ${sidebarCollapsed ? 'lg:pl-20' : ''}`}>
+      <div className={`transition-all ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
         <div className="hidden lg:flex items-center justify-between p-4 bg-white border-b border-slate-200">
           <button
             onClick={() => setSidebarCollapsed((v) => !v)}
