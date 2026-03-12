@@ -31,31 +31,44 @@ function App() {
   const { setUser, setLoading } = useAuthStore()
 
   useEffect(() => {
+    let isMounted = true
+    let subscription: { unsubscribe: () => void } | null = null
+
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
         if (session?.user) {
           const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
           if (profile) setUser(profile)
+        } else {
+          setUser(null)
         }
       } catch (error) {
         console.error('Auth init error:', error)
+        setUser(null)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
+
+      const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+          const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+          if (profile) setUser(profile)
+        } else {
+          setUser(null)
+        }
+        if (isMounted) setLoading(false)
+      })
+      subscription = data.subscription
     }
+
     initAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-        if (profile) setUser(profile)
-      } else {
-        setUser(null)
-      }
-      setLoading(false)
-    })
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription?.unsubscribe()
+    }
   }, [setUser, setLoading])
 
   return (
