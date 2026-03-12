@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/auth'
 import { 
   LayoutDashboard, ShoppingCart, Truck, TrendingUp, 
   DollarSign, FileCheck, Package, Archive,
-  BarChart3, LogOut, Menu, X, ChevronLeft, ChevronRight
+  BarChart3, LogOut, Menu, X, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -78,14 +78,11 @@ export default function MainLayout() {
       {/* Desktop sidebar */}
       <div className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:bg-slate-900 lg:border-r lg:border-slate-800 transition-all ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}`}>
         <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} p-6 border-b border-slate-800`}>
-          {!sidebarCollapsed && <span className="text-xl font-bold text-amber-400">SafeGold</span>}
-          <button
-            onClick={() => setSidebarCollapsed((v) => !v)}
-            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-          </button>
+          {sidebarCollapsed ? (
+            <span className="text-lg font-bold text-amber-400">SG</span>
+          ) : (
+            <span className="text-xl font-bold text-amber-400">SafeGold</span>
+          )}
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navigation.map((item) => (
@@ -132,6 +129,17 @@ export default function MainLayout() {
 
       {/* Main content */}
       <div className={`lg:pl-64 transition-all ${sidebarCollapsed ? 'lg:pl-20' : ''}`}>
+        <div className="hidden lg:flex items-center justify-between p-4 bg-white border-b border-slate-200">
+          <button
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            className="p-2 rounded-md border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+          </button>
+          <div />
+        </div>
         <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200">
           <span className="text-lg font-bold text-amber-600">SafeGold</span>
           <button onClick={() => setSidebarOpen(true)}>
