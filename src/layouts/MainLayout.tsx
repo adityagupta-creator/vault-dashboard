@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/auth'
 import { 
   LayoutDashboard, ShoppingCart, Truck, TrendingUp, 
   DollarSign, FileCheck, Package, Archive,
-  BarChart3, LogOut, Menu, X
+  BarChart3, LogOut, Menu, X, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -24,6 +24,7 @@ export default function MainLayout() {
   const { user, signOut } = useAuthStore()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const handleSignOut = async () => {
     await signOut()
@@ -75,9 +76,16 @@ export default function MainLayout() {
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 lg:bg-slate-900 lg:border-r lg:border-slate-800">
-        <div className="flex items-center justify-between p-6 border-b border-slate-800">
-          <span className="text-xl font-bold text-amber-400">SafeGold</span>
+      <div className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:bg-slate-900 lg:border-r lg:border-slate-800 transition-all ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}`}>
+        <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} p-6 border-b border-slate-800`}>
+          {!sidebarCollapsed && <span className="text-xl font-bold text-amber-400">SafeGold</span>}
+          <button
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          </button>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navigation.map((item) => (
@@ -86,40 +94,44 @@ export default function MainLayout() {
               to={item.href}
               end={item.href === '/'}
               className={({ isActive }) =>
-                `flex items-center px-4 py-3 rounded-lg transition-colors ${
+                `flex items-center rounded-lg transition-colors ${sidebarCollapsed ? 'justify-center px-3 py-3' : 'px-4 py-3'} ${
                   isActive ? 'bg-amber-500 text-slate-900' : 'text-slate-300 hover:bg-slate-800'
                 }`
               }
+              title={sidebarCollapsed ? item.name : undefined}
             >
-              <item.icon className="w-5 h-5 mr-3" />
-              {item.name}
+              <item.icon className={`w-5 h-5 ${sidebarCollapsed ? '' : 'mr-3'}`} />
+              {!sidebarCollapsed && item.name}
             </NavLink>
           ))}
         </nav>
         <div className="p-4 border-t border-slate-800">
-          <div className="flex items-center mb-3">
+          <div className={`flex items-center mb-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
             <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
               <span className="text-sm font-semibold text-slate-900">
                 {user?.full_name?.[0] || user?.email?.[0] || 'U'}
               </span>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-white">{user?.full_name || user?.email}</p>
-              <p className="text-xs text-slate-400">{user?.role && roleLabels[user.role]}</p>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="ml-3">
+                <p className="text-sm font-medium text-white">{user?.full_name || user?.email}</p>
+                <p className="text-xs text-slate-400">{user?.role && roleLabels[user.role]}</p>
+              </div>
+            )}
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center w-full px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+            className={`flex items-center w-full px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+            title="Sign Out"
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
+            <LogOut className={`w-4 h-4 ${sidebarCollapsed ? '' : 'mr-2'}`} />
+            {!sidebarCollapsed && 'Sign Out'}
           </button>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={`lg:pl-64 transition-all ${sidebarCollapsed ? 'lg:pl-20' : ''}`}>
         <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200">
           <span className="text-lg font-bold text-amber-600">SafeGold</span>
           <button onClick={() => setSidebarOpen(true)}>
