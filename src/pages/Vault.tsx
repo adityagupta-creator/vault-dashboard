@@ -6,6 +6,7 @@ import type { VaultLogistics } from '../types'
 export default function VaultPage() {
   const [vaults, setVaults] = useState<VaultLogistics[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -13,11 +14,21 @@ export default function VaultPage() {
 
   useEffect(() => { fetchVaults() }, [])
 
+  const toNumber = (value: unknown) => {
+    const num = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(num) ? num : 0
+  }
+
   const fetchVaults = async () => {
     try {
-      const { data } = await supabase.from('vault_logistics').select('*').order('vault_name')
+      setError(null)
+      const { data, error: fetchError } = await supabase.from('vault_logistics').select('*').order('vault_name')
+      if (fetchError) throw fetchError
       setVaults(data || [])
-    } catch (error) { console.error(error) }
+    } catch (error) {
+      console.error(error)
+      setError((error as Error)?.message || 'Failed to load vaults')
+    }
     finally { setLoading(false) }
   }
 
@@ -39,9 +50,9 @@ export default function VaultPage() {
   }
 
   const filteredVaults = vaults.filter(v => v.vault_name?.toLowerCase().includes(searchTerm.toLowerCase()))
-  const totalAvailable = vaults.reduce((sum, v) => sum + v.available_gold, 0)
-  const totalReserved = vaults.reduce((sum, v) => sum + v.reserved_gold, 0)
-  const totalDelivered = vaults.reduce((sum, v) => sum + v.delivered_gold, 0)
+  const totalAvailable = vaults.reduce((sum, v) => sum + toNumber(v.available_gold), 0)
+  const totalReserved = vaults.reduce((sum, v) => sum + toNumber(v.reserved_gold), 0)
+  const totalDelivered = vaults.reduce((sum, v) => sum + toNumber(v.delivered_gold), 0)
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
@@ -75,6 +86,12 @@ export default function VaultPage() {
           className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4">
+          {error}
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -85,10 +102,10 @@ export default function VaultPage() {
               {filteredVaults.map((vault) => (
                 <tr key={vault.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">{vault.vault_name}</td>
-                  <td className="px-6 py-4 text-sm text-green-600">{vault.available_gold.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-amber-600">{vault.reserved_gold.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-blue-600">{vault.delivered_gold.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900 font-medium">{(vault.available_gold + vault.reserved_gold + vault.delivered_gold).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-green-600">{toNumber(vault.available_gold).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-amber-600">{toNumber(vault.reserved_gold).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-blue-600">{toNumber(vault.delivered_gold).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-slate-900 font-medium">{(toNumber(vault.available_gold) + toNumber(vault.reserved_gold) + toNumber(vault.delivered_gold)).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
