@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting…</title>
+    <script>
+      (function () {
+        const path = window.location.pathname
+        const parts = path.split('/')
+        const base = `/${parts[1] || ''}/`
+        const trimmed = path.replace(base, '')
+        const search = window.location.search || ''
+        const hash = window.location.hash || ''
+        sessionStorage.setItem('spa-path', trimmed + search + hash)
+        window.location.replace(base)
+      })()
+    </script>
+  </head>
+  <body></body>
+</html>

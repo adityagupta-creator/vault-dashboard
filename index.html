@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SafeGold - Bullion Trade Operations</title>
+    <script>
+      (function () {
+        const base = '%BASE_URL%'
+        const storedPath = sessionStorage.getItem('spa-path')
+        if (storedPath) {
+          sessionStorage.removeItem('spa-path')
+          const normalized = storedPath.startsWith('/') ? storedPath.slice(1) : storedPath
+          history.replaceState(null, '', base + normalized)
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
