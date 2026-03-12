@@ -5,7 +5,7 @@ import { Search, Check, X } from 'lucide-react'
 import type { ClientOrder, Payment } from '../types'
 
 export default function FinancePage() {
-  const { user, hasRole } = useAuthStore()
+  const { user } = useAuthStore()
   const [payments, setPayments] = useState<Payment[]>([])
   const [orders, setOrders] = useState<ClientOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,7 +62,6 @@ export default function FinancePage() {
     received: 'bg-blue-100 text-blue-800', verified: 'bg-green-100 text-green-800', rejected: 'bg-red-100 text-red-800',
   }
 
-  if (!hasRole(['finance', 'management'])) return <div className="flex items-center justify-center h-64"><p className="text-slate-500">You don't have access to this page.</p></div>
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (

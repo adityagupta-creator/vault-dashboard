@@ -5,7 +5,7 @@ import { Search, Check, X } from 'lucide-react'
 import type { ClientOrder, Reconciliation } from '../types'
 
 export default function ReconciliationPage() {
-  const { user, hasRole } = useAuthStore()
+  const { user } = useAuthStore()
   const [reconciliations, setReconciliations] = useState<Reconciliation[]>([])
   const [orders, setOrders] = useState<ClientOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,7 +40,6 @@ export default function ReconciliationPage() {
   const filteredRecons = reconciliations.filter(r => getOrder(r.client_order_id)?.client_name?.toLowerCase().includes(searchTerm.toLowerCase()))
   const pendingOrders = orders.filter(o => !reconciliations.some(r => r.client_order_id === o.id))
 
-  if (!hasRole(['reconciliation', 'management'])) return <div className="flex items-center justify-center h-64"><p className="text-slate-500">You don't have access to this page.</p></div>
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (

@@ -8,16 +8,16 @@ import {
 import { useState } from 'react'
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['trading_agent', 'finance', 'reconciliation', 'vault', 'management'] },
-  { name: 'Client Orders', href: '/client-orders', icon: ShoppingCart, roles: ['trading_agent', 'finance', 'reconciliation', 'vault', 'management'] },
-  { name: 'Supplier Purchase', href: '/supplier-purchase', icon: Truck, roles: ['trading_agent', 'finance', 'reconciliation', 'vault', 'management'] },
-  { name: 'Hedge Entry', href: '/hedge-entry', icon: TrendingUp, roles: ['trading_agent', 'finance', 'reconciliation', 'vault', 'management'] },
-  { name: 'Trade Tracking', href: '/trade-tracking', icon: DollarSign, roles: ['trading_agent', 'finance', 'reconciliation', 'vault', 'management'] },
-  { name: 'Finance Verification', href: '/finance', icon: FileCheck, roles: ['finance', 'management'] },
-  { name: 'Delivery Orders', href: '/delivery-orders', icon: Package, roles: ['trading_agent', 'finance', 'reconciliation', 'vault', 'management'] },
-  { name: 'Reconciliation', href: '/reconciliation', icon: FileCheck, roles: ['reconciliation', 'management'] },
-  { name: 'Vault Inventory', href: '/vault', icon: Archive, roles: ['vault', 'management'] },
-  { name: 'Reports', href: '/reports', icon: BarChart3, roles: ['management'] },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Client Orders', href: '/client-orders', icon: ShoppingCart },
+  { name: 'Supplier Purchase', href: '/supplier-purchase', icon: Truck },
+  { name: 'Hedge Entry', href: '/hedge-entry', icon: TrendingUp },
+  { name: 'Trade Tracking', href: '/trade-tracking', icon: DollarSign },
+  { name: 'Finance Verification', href: '/finance', icon: FileCheck },
+  { name: 'Delivery Orders', href: '/delivery-orders', icon: Package },
+  { name: 'Reconciliation', href: '/reconciliation', icon: FileCheck },
+  { name: 'Vault Inventory', href: '/vault', icon: Archive },
+  { name: 'Reports', href: '/reports', icon: BarChart3 },
 ]
 
 export default function MainLayout() {
@@ -29,10 +29,6 @@ export default function MainLayout() {
     await signOut()
     navigate('/login')
   }
-
-  const filteredNav = navigation.filter(item => 
-    user && item.roles.includes(user.role)
-  )
 
   const roleLabels: Record<string, string> = {
     trading_agent: 'Trading Agent',
@@ -57,7 +53,7 @@ export default function MainLayout() {
                 </button>
               </div>
               <nav className="flex-1 p-4 space-y-1">
-                {filteredNav.map((item) => (
+                {navigation.map((item) => (
                   <NavLink
                     key={item.name}
                     to={item.href}
@@ -84,7 +80,7 @@ export default function MainLayout() {
           <span className="text-xl font-bold text-amber-400">SafeGold</span>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {filteredNav.map((item) => (
+          {navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}

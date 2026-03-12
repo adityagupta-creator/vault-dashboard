@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
-import { useAuthStore } from '../store/auth'
 import { Plus, Search, X } from 'lucide-react'
 import type { VaultLogistics } from '../types'
 
 export default function VaultPage() {
-  const { hasRole } = useAuthStore()
   const [vaults, setVaults] = useState<VaultLogistics[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -45,7 +43,6 @@ export default function VaultPage() {
   const totalReserved = vaults.reduce((sum, v) => sum + v.reserved_gold, 0)
   const totalDelivered = vaults.reduce((sum, v) => sum + v.delivered_gold, 0)
 
-  if (!hasRole(['vault', 'management'])) return <div className="flex items-center justify-center h-64"><p className="text-slate-500">You don't have access to this page.</p></div>
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (

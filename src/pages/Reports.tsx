@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
-import { useAuthStore } from '../store/auth'
 import { Download } from 'lucide-react'
 import type { ClientOrder } from '../types'
 
 export default function ReportsPage() {
-  const { hasRole } = useAuthStore()
   const [orders, setOrders] = useState<ClientOrder[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -47,7 +45,6 @@ export default function ReportsPage() {
     const a = document.createElement('a'); a.href = url; a.download = 'safegold_report.csv'; a.click()
   }
 
-  if (!hasRole(['management'])) return <div className="flex items-center justify-center h-64"><p className="text-slate-500">You don't have access to this page.</p></div>
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (
