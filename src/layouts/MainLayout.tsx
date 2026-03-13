@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { 
   LayoutDashboard, ShoppingCart, Truck, TrendingUp, 
-  DollarSign, FileCheck, Package, Archive,
+  DollarSign, FileCheck, Package, Archive, FileSpreadsheet,
   BarChart3, LogOut, Menu, X, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react'
 import { useState } from 'react'
@@ -16,6 +16,7 @@ const navigation = [
   { name: 'Finance Verification', href: '/finance', icon: FileCheck },
   { name: 'Delivery Orders', href: '/delivery-orders', icon: Package },
   { name: 'Reconciliation', href: '/reconciliation', icon: FileCheck },
+  { name: 'Hardik Coin', href: '/hardik-coin', icon: FileSpreadsheet },
   { name: 'Vault Inventory', href: '/vault', icon: Archive },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
 ]

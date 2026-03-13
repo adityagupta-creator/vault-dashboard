@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../api/supabase'
 import { useAuthStore } from '../store/auth'
-import { Plus, Search, Check, X } from 'lucide-react'
+import { Plus, Search, Check, X, FileSpreadsheet } from 'lucide-react'
 import type { ClientOrder, SupplierPurchase } from '../types'
 
 export default function SupplierPurchasePage() {
   const { user } = useAuthStore()
   const [purchases, setPurchases] = useState<SupplierPurchase[]>([])
   const [orders, setOrders] = useState<ClientOrder[]>([])
+  const [ordersMap, setOrdersMap] = useState<Record<string, ClientOrder>>({})
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -22,8 +24,19 @@ export default function SupplierPurchasePage() {
         supabase.from('supplier_purchases').select('*').order('created_at', { ascending: false }),
         supabase.from('client_orders').select('*').eq('trade_status', 'pending_supplier_booking')
       ])
-      setPurchases(purchasesRes.data || [])
+      const ps = purchasesRes.data || []
+      setPurchases(ps)
       setOrders(ordersRes.data || [])
+
+      const orderIds = [...new Set(ps.map((p) => p.client_order_id))]
+      if (orderIds.length > 0) {
+        const { data } = await supabase.from('client_orders').select('*').in('id', orderIds)
+        const map: Record<string, ClientOrder> = {}
+        ;(data || []).forEach((o) => { map[o.id] = o })
+        setOrdersMap(map)
+      } else {
+        setOrdersMap({})
+      }
     } catch (error) { console.error(error) }
     finally { setLoading(false) }
   }
@@ -62,9 +75,14 @@ export default function SupplierPurchasePage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div><h1 className="text-2xl font-bold text-slate-900">Supplier Purchase</h1><p className="text-slate-500">Manage supplier bookings</p></div>
-        <button onClick={() => setShowModal(true)} className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors">
-          <Plus className="w-5 h-5 mr-2" />Book Supplier
-        </button>
+        <div className="flex items-center gap-2">
+          <Link to="/hardik-coin" className="inline-flex items-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors">
+            <FileSpreadsheet className="w-5 h-5 mr-2" />Hardik Coin
+          </Link>
+          <button onClick={() => setShowModal(true)} className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors">
+            <Plus className="w-5 h-5 mr-2" />Book Supplier
+          </button>
+        </div>
       </div>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -75,10 +93,16 @@ export default function SupplierPurchasePage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50">
-              <tr>{['Supplier', 'Grams', 'Rate', 'Net Purchase', 'GST (2%)', 'Gross', 'Status', 'Actions'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{h}</th>)}</tr>
+              <tr>{['Supplier', 'Grams', 'Rate', 'Net Purchase', 'GST (2%)', 'Gross', 'Trade Margin', 'Margin %', 'Status', 'Actions'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredPurchases.map((purchase) => (
+              {filteredPurchases.map((purchase) => {
+                const order = ordersMap[purchase.client_order_id]
+                const nr = order?.net_revenue ?? 0
+                const np = purchase.net_purchase ?? 0
+                const margin = nr && np ? nr - np : null
+                const marginPct = nr && margin != null ? ((margin / nr) * 100).toFixed(2) + '%' : '-'
+                return (
                 <tr key={purchase.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm text-slate-900">{purchase.supplier_name}</td>
                   <td className="px-6 py-4 text-sm text-slate-900">{purchase.supplier_grams}g</td>
@@ -86,6 +110,8 @@ export default function SupplierPurchasePage() {
                   <td className="px-6 py-4 text-sm text-slate-900">₹{purchase.net_purchase?.toLocaleString() || '-'}</td>
                   <td className="px-6 py-4 text-sm text-slate-900">₹{purchase.gst_2?.toLocaleString() || '-'}</td>
                   <td className="px-6 py-4 text-sm text-slate-900">₹{purchase.gross_purchase?.toLocaleString() || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-slate-900">{margin != null ? `₹${margin.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{marginPct}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${purchase.supplier_status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{purchase.supplier_status}</span>
                   </td>
@@ -97,7 +123,8 @@ export default function SupplierPurchasePage() {
                     )}
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

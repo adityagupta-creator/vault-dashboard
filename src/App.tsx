@@ -13,6 +13,7 @@ import TradeTrackingPage from './pages/TradeTracking'
 import FinancePage from './pages/Finance'
 import DeliveryOrdersPage from './pages/DeliveryOrders'
 import ReconciliationPage from './pages/Reconciliation'
+import HardikCoinPage from './pages/HardikCoin'
 import VaultPage from './pages/Vault'
 import ReportsPage from './pages/Reports'
 
@@ -84,6 +85,7 @@ function App() {
           <Route path="finance" element={<FinancePage />} />
           <Route path="delivery-orders" element={<DeliveryOrdersPage />} />
           <Route path="reconciliation" element={<ReconciliationPage />} />
+          <Route path="hardik-coin" element={<HardikCoinPage />} />
           <Route path="vault" element={<VaultPage />} />
           <Route path="reports" element={<ReportsPage />} />
         </Route>
