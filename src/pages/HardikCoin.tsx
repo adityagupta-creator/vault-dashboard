@@ -6,7 +6,7 @@ import { Search, RefreshCw, Truck } from 'lucide-react'
 import { extractCity, salesPersonFor } from '../lib/hardikUtils'
 import type { ClientOrder, SupplierPurchase } from '../types'
 
-/** 27-column Hardik Coin layout – full trade sheet with purchase side */
+/** 26 columns – matches Python Output File 1 (MASTER_HardikCoin) */
 const COLS = [
   'Sr.No',
   'Date',
@@ -15,25 +15,25 @@ const COLS = [
   'Purity',
   'Party Name',
   'Symbol',
-  'Qty Sold',
+  'Quantity Sold',
   'Grams',
   'Quoted Rate',
-  'Net Revenue',
-  'GST',
+  'Net Revenue_1',
+  'GST_1',
   'TCS',
   'Gross Revenue',
-  'Qty Bought',
+  'Quantity Bought',
   'Trade Booked',
   'Making Charges',
-  'Net Purchase',
-  'GST (2%)',
+  'Net Purchase_2',
+  'GST_2',
   'Gross Purchase',
   'Supplier Name',
   'Trade Margin',
   'Trade Margin %',
   'City',
   'Trade Status',
-  'Sales Person',
+  'Sales Person Name',
 ]
 
 type Row = {
