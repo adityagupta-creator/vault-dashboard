@@ -89,6 +89,7 @@ serve(async (req) => {
       headers: {
         Authorization: `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'safegold-vault-dashboard/1.0',
       },
       body: JSON.stringify({
         from,
