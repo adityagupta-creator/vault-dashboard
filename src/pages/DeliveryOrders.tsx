@@ -75,7 +75,7 @@ export default function DeliveryOrdersPage() {
           className="page-excel-search" />
       </div>
       <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
-        <div className="overflow-auto flex-1">
+        <div className="table-container">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
               <tr>{['Sr.No', 'Invoice #', 'Client', 'SKU', 'Vault', 'Logistics', 'Status', 'Docs'].map(h => <th key={h}>{h}</th>)}</tr>

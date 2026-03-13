@@ -77,77 +77,77 @@ export default function MainLayout() {
       </div>
 
       {/* Desktop sidebar */}
-      <div className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:bg-slate-900 lg:border-r lg:border-slate-800 transition-all ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}`}>
-        <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} p-6 border-b border-slate-800`}>
+      <div className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:bg-slate-900 lg:border-r lg:border-slate-800 transition-all ${sidebarCollapsed ? 'lg:w-14' : 'lg:w-48'}`}>
+        <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} px-3 py-2 border-b border-slate-800`}>
           {sidebarCollapsed ? (
-            <span className="text-lg font-bold text-amber-400">SG</span>
+            <span className="text-sm font-bold text-amber-400">SG</span>
           ) : (
-            <span className="text-xl font-bold text-amber-400">SafeGold</span>
+            <span className="text-base font-bold text-amber-400">SafeGold</span>
           )}
         </div>
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-2 py-1.5 space-y-0.5 overflow-y-auto">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}
               end={item.href === '/'}
               className={({ isActive }) =>
-                `flex items-center rounded-lg transition-colors ${sidebarCollapsed ? 'justify-center px-3 py-3' : 'px-4 py-3'} ${
-                  isActive ? 'bg-amber-500 text-slate-900' : 'text-slate-300 hover:bg-slate-800'
+                `flex items-center rounded transition-colors ${sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-2.5 py-2'} text-[11px] ${
+                  isActive ? 'bg-amber-500 text-slate-900 font-medium' : 'text-slate-300 hover:bg-slate-800'
                 }`
               }
               title={sidebarCollapsed ? item.name : undefined}
             >
-              <item.icon className={`w-5 h-5 ${sidebarCollapsed ? '' : 'mr-3'}`} />
-              {!sidebarCollapsed && item.name}
+              <item.icon className={`w-4 h-4 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-2'}`} />
+              {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
             </NavLink>
           ))}
         </nav>
-        <div className="p-4 border-t border-slate-800">
-          <div className={`flex items-center mb-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
-              <span className="text-sm font-semibold text-slate-900">
+        <div className="px-2 py-2 border-t border-slate-800">
+          <div className={`flex items-center mb-2 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+            <div className="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-[10px] font-semibold text-slate-900">
                 {user?.full_name?.[0] || user?.email?.[0] || 'U'}
               </span>
             </div>
             {!sidebarCollapsed && (
-              <div className="ml-3">
-                <p className="text-sm font-medium text-white">{user?.full_name || user?.email}</p>
-                <p className="text-xs text-slate-400">{user?.role && roleLabels[user.role]}</p>
+              <div className="ml-2 min-w-0 flex-1">
+                <p className="text-[11px] font-medium text-white truncate">{user?.full_name || user?.email}</p>
+                <p className="text-[10px] text-slate-400">{user?.role && roleLabels[user.role]}</p>
               </div>
             )}
           </div>
           <button
             onClick={handleSignOut}
-            className={`flex items-center w-full px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+            className={`flex items-center w-full px-2 py-1.5 text-[11px] text-slate-400 hover:text-white transition-colors rounded ${sidebarCollapsed ? 'justify-center' : ''}`}
             title="Sign Out"
           >
-            <LogOut className={`w-4 h-4 ${sidebarCollapsed ? '' : 'mr-2'}`} />
+            <LogOut className={`w-4 h-4 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-2'}`} />
             {!sidebarCollapsed && 'Sign Out'}
           </button>
         </div>
       </div>
 
       {/* Main content */}
-      <div className={`transition-all flex flex-col min-h-screen ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
-        <div className="hidden lg:flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-200">
+      <div className={`transition-all flex flex-col min-h-screen ${sidebarCollapsed ? 'lg:pl-14' : 'lg:pl-48'}`}>
+        <div className="hidden lg:flex items-center justify-between px-2 py-1 bg-white border-b border-slate-200">
           <button
             onClick={() => setSidebarCollapsed((v) => !v)}
-            className="p-2 rounded-md border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+            className="p-1.5 rounded border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {sidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
           </button>
           <div />
         </div>
-        <div className="lg:hidden flex items-center justify-between px-3 py-2 bg-white border-b border-slate-200">
-          <span className="text-lg font-bold text-amber-600">SafeGold</span>
+        <div className="lg:hidden flex items-center justify-between px-2 py-1.5 bg-white border-b border-slate-200">
+          <span className="text-base font-bold text-amber-600">SafeGold</span>
           <button onClick={() => setSidebarOpen(true)}>
-            <Menu className="w-6 h-6 text-slate-600" />
+            <Menu className="w-5 h-5 text-slate-600" />
           </button>
         </div>
-        <main className="p-2 flex-1 flex flex-col min-h-0 overflow-hidden">
+        <main className="px-1.5 py-1 flex-1 flex flex-col min-h-0 overflow-hidden">
           <Outlet />
         </main>
       </div>

@@ -123,12 +123,12 @@ export default function HardikCoinPage() {
           className="page-excel-search" />
       </div>
       <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
-        <div className="overflow-auto flex-1">
-          <table className="table-excel w-full min-w-[1200px] [&_thead_th]:bg-[#1F4E79] [&_thead_th]:text-white [&_thead_th]:border-slate-600">
+        <div className="table-container">
+          <table className="table-excel w-full [&_thead_th]:bg-[#1F4E79] [&_thead_th]:text-white [&_thead_th]:border-slate-600">
             <thead className="sticky top-0 z-10">
               <tr>
                 {COLS.map((h) => (
-                  <th key={h} className="px-2 py-1.5 text-left text-[10px] font-medium text-white uppercase whitespace-nowrap border border-slate-600">
+                  <th key={h} className="px-1 py-0.5 text-left text-[10px] font-medium text-white uppercase truncate border border-slate-600">
                     {h}
                   </th>
                 ))}

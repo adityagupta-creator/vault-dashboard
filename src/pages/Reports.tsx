@@ -49,14 +49,14 @@ export default function ReportsPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] min-h-[300px] space-y-2">
-      <div className="flex items-center justify-between flex-shrink-0">
-        <h1 className="text-base font-semibold text-slate-900">Reports</h1>
-        <button onClick={exportReport} className="inline-flex items-center px-2 py-1 text-xs bg-green-500 hover:bg-green-600 text-white font-medium rounded">
+    <div className="flex flex-col flex-1 min-h-0 space-y-1">
+      <div className="flex items-center justify-between flex-shrink-0 py-0.5">
+        <h1 className="text-sm font-semibold text-slate-900">Reports</h1>
+        <button onClick={exportReport} className="inline-flex items-center px-1.5 py-0.5 text-[10px] bg-green-500 hover:bg-green-600 text-white font-medium rounded">
           <Download className="w-4 h-4 mr-1" />Export
         </button>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 flex-shrink-0">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-1.5 flex-shrink-0">
         {[
           { label: 'Orders', value: totalOrders },
           { label: 'Grams', value: `${(totalGrams / 1000).toFixed(2)} kg` },
@@ -64,9 +64,9 @@ export default function ReportsPage() {
           { label: 'Margin', value: `₹${(totalMargin / 100000).toFixed(2)}L`, green: true },
           { label: 'Margin %', value: `${totalRevenue > 0 ? ((totalMargin / totalRevenue) * 100).toFixed(1) : 0}%`, green: true },
         ].map(({ label, value, green }) => (
-          <div key={label} className="bg-white rounded p-2 border border-slate-200">
-            <p className="text-[10px] text-slate-500">{label}</p>
-            <p className={`text-sm font-bold ${green ? 'text-green-600' : 'text-slate-900'}`}>{value}</p>
+          <div key={label} className="bg-white rounded p-1.5 border border-slate-200">
+            <p className="text-[9px] text-slate-500">{label}</p>
+            <p className={`text-xs font-bold ${green ? 'text-green-600' : 'text-slate-900'}`}>{value}</p>
           </div>
         ))}
       </div>

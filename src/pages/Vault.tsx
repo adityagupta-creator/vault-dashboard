@@ -88,7 +88,7 @@ export default function VaultPage() {
         <div className="bg-red-50 border border-red-200 text-red-700 rounded p-2 text-xs flex-shrink-0">{error}</div>
       )}
       <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
-        <div className="overflow-auto flex-1">
+        <div className="table-container">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
               <tr>{['Sr.No', 'Vault', 'Available', 'Reserved', 'Delivered', 'Total'].map(h => <th key={h}>{h}</th>)}</tr>

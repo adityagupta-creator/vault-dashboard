@@ -7,29 +7,32 @@
     @apply flex flex-col flex-1 min-h-0 overflow-hidden;
   }
   .page-excel-header {
-    @apply flex flex-wrap items-center justify-between gap-2 py-1;
+    @apply flex flex-wrap items-center justify-between gap-1.5 py-0.5;
   }
   .page-excel-title {
-    @apply text-base font-semibold text-slate-900;
+    @apply text-sm font-semibold text-slate-900;
   }
   .page-excel-search {
-    @apply w-full max-w-xs pl-8 pr-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-amber-500;
+    @apply w-full max-w-[12rem] pl-7 pr-1.5 py-1 text-[10px] border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-amber-500;
   }
   .table-excel {
-    @apply w-full border-collapse text-[10px];
+    @apply w-full border-collapse text-[10px] table-fixed;
   }
   .table-excel th {
-    @apply px-1.5 py-0.5 text-left font-medium text-slate-600 uppercase whitespace-nowrap bg-slate-100 border border-slate-200;
+    @apply px-1 py-0.5 text-left font-medium text-slate-600 uppercase bg-slate-100 border border-slate-200 truncate;
   }
   .table-excel td {
-    @apply px-1.5 py-0.5 border border-slate-200;
+    @apply px-1 py-0.5 border border-slate-200 truncate;
   }
   .table-excel tbody tr:hover {
     @apply bg-slate-50;
   }
   .table-excel th:first-child,
   .table-excel td:first-child {
-    min-width: 2.5rem;
+    min-width: 2rem;
     width: 2.5rem;
+  }
+  .table-container {
+    @apply flex-1 min-h-0 overflow-x-hidden overflow-y-auto;
   }
 }
