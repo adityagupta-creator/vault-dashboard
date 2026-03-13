@@ -93,7 +93,7 @@ export default function ClientOrdersPage() {
   }
 
   const sendOrderNotification = async (count: number, fileName: string) => {
-    const recipient = import.meta.env.VITE_MEGHNA_EMAIL
+    const recipient = import.meta.env.VITE_MEGHNA_EMAIL || 'aditya.gupta@safegold.in'
     if (!recipient) return
     const functionName = import.meta.env.VITE_ORDER_NOTIFY_FUNCTION || 'notify-new-orders'
     try {
