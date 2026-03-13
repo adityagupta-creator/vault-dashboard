@@ -37,6 +37,7 @@ function App() {
 
     const initAuth = async () => {
       try {
+        setLoading(true)
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) throw error
         if (session?.user) {
