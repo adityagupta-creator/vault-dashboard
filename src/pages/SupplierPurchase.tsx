@@ -4,6 +4,7 @@ import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { Plus, Search, Check, X, FileSpreadsheet } from 'lucide-react'
+import { PURCHASE_GST_RATE } from '../lib/hardikUtils'
 import type { ClientOrder, SupplierPurchase } from '../types'
 
 export default function SupplierPurchasePage() {
@@ -50,7 +51,7 @@ export default function SupplierPurchasePage() {
       const supplier_rate = parseFloat(formData.supplier_rate) || 0
       const supplier_making_charges = parseFloat(formData.supplier_making_charges) || 0
       const net_purchase = (supplier_grams * supplier_rate / 10) + supplier_making_charges
-      const gst_2 = net_purchase * 0.02
+      const gst_2 = net_purchase * PURCHASE_GST_RATE
       const gross_purchase = net_purchase + gst_2
       await Promise.all([
         supabase.from('supplier_purchases').insert({ client_order_id: formData.client_order_id, supplier_name: formData.supplier_name, supplier_grams, supplier_rate, supplier_making_charges, net_purchase, gst_2, gross_purchase, supplier_status: formData.supplier_status, booked_by_agent_id: user?.id || null }),

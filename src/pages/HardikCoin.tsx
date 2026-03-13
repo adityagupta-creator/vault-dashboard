@@ -8,7 +8,7 @@ import type { ClientOrder, SupplierPurchase } from '../types'
 
 /** 26 columns – matches Python Output File 1 (MASTER_HardikCoin) */
 const COLS = [
-  'Sr.No',
+  'Sr. No.',
   'Date',
   'Time',
   'Delivery Date',

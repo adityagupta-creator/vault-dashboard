@@ -1,7 +1,16 @@
 /**
  * Utils for Hardik Coin workflow – mirrors Python script logic.
  * City & salesperson derived from Symbol (product_symbol) first token.
+ *
+ * Formulas (matches Python F1_FORMULAS):
+ *   Net Purchase_2 = Quantity Bought * (Trade Booked + Making Charges)
+ *     → (grams/10) * supplier_rate + supplier_making_charges
+ *   GST_2 = Net Purchase_2 * 0.03
+ *   Gross Purchase = Net Purchase_2 + GST_2
+ *   Trade Margin = Net Revenue_1 - Net Purchase_2
+ *   Trade Margin % = Trade Margin / Net Revenue_1
  */
+export const PURCHASE_GST_RATE = 0.03 // GST_2 = Net Purchase * 3%
 
 const CITY_CODE_TO_NAME: Record<string, string> = {
   PJB: 'Mohali',
