@@ -62,41 +62,41 @@ export default function DeliveryOrdersPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div><h1 className="text-2xl font-bold text-slate-900">Delivery Orders</h1><p className="text-slate-500">Create and manage delivery orders</p></div>
-        <button onClick={() => setShowModal(true)} className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors">
-          <Plus className="w-5 h-5 mr-2" />Create DO
+    <div className="page-excel space-y-1">
+      <div className="page-excel-header flex-shrink-0">
+        <h1 className="page-excel-title">Delivery Orders</h1>
+        <button onClick={() => setShowModal(true)} className="inline-flex items-center px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-medium rounded transition-colors">
+          <Plus className="w-4 h-4 mr-1" />Create DO
         </button>
       </div>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input type="text" placeholder="Search by client name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+      <div className="relative flex-shrink-0">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+          className="page-excel-search" />
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>{['Invoice #', 'Client', 'SKU', 'Vault', 'Logistics', 'Status', 'Documents'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{h}</th>)}</tr>
+      <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div className="overflow-auto flex-1">
+          <table className="table-excel">
+            <thead className="sticky top-0 z-10">
+              <tr>{['Invoice #', 'Client', 'SKU', 'Vault', 'Logistics', 'Status', 'Docs'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody>
               {filteredDeliveries.map((delivery) => {
                 const order = getOrder(delivery.client_order_id)
                 return (
-                  <tr key={delivery.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 text-sm text-slate-900">{delivery.invoice_number}</td>
-                    <td className="px-6 py-4 text-sm text-slate-900">{order?.client_name || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{delivery.sku || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{delivery.vault || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{delivery.logistics_partner || '-'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[delivery.status] || 'bg-slate-100'}`}>{delivery.status}</span>
+                  <tr key={delivery.id}>
+                    <td className="text-slate-900">{delivery.invoice_number}</td>
+                    <td className="text-slate-900">{order?.client_name || '-'}</td>
+                    <td className="text-slate-600">{delivery.sku || '-'}</td>
+                    <td className="text-slate-600">{delivery.vault || '-'}</td>
+                    <td className="text-slate-600">{delivery.logistics_partner || '-'}</td>
+                    <td>
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${statusColors[delivery.status] || 'bg-slate-100'}`}>{delivery.status}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        {delivery.invoice_number && <button className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Invoice"><FileText className="w-4 h-4" /></button>}
-                        {delivery.delivery_challan_number && <button className="p-1 text-purple-600 hover:bg-purple-50 rounded" title="Challan"><Truck className="w-4 h-4" /></button>}
+                    <td>
+                      <div className="flex gap-1">
+                        {delivery.invoice_number && <button className="p-0.5 text-blue-600 hover:bg-blue-50 rounded" title="Invoice"><FileText className="w-3.5 h-3.5" /></button>}
+                        {delivery.delivery_challan_number && <button className="p-0.5 text-purple-600 hover:bg-purple-50 rounded" title="Challan"><Truck className="w-3.5 h-3.5" /></button>}
                       </div>
                     </td>
                   </tr>
@@ -105,7 +105,7 @@ export default function DeliveryOrdersPage() {
             </tbody>
           </table>
         </div>
-        {filteredDeliveries.length === 0 && <div className="p-12 text-center text-slate-500">No deliveries found</div>}
+        {filteredDeliveries.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No deliveries found</div>}
       </div>
 
       {showModal && (

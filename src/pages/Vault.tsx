@@ -58,61 +58,55 @@ export default function VaultPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div><h1 className="text-2xl font-bold text-slate-900">Vault Inventory</h1><p className="text-slate-500">Track gold across vaults</p></div>
-        <button onClick={() => setShowModal(true)} className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors">
-          <Plus className="w-5 h-5 mr-2" />Add Vault
+    <div className="page-excel space-y-1">
+      <div className="page-excel-header flex-shrink-0">
+        <h1 className="page-excel-title">Vault Inventory</h1>
+        <button onClick={() => setShowModal(true)} className="inline-flex items-center px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-medium rounded transition-colors">
+          <Plus className="w-4 h-4 mr-1" />Add Vault
         </button>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-amber-400 to-amber-500 rounded-xl p-6 text-white">
-          <p className="text-amber-100">Available Gold</p>
-          <p className="text-3xl font-bold mt-1">{totalAvailable.toLocaleString()}g</p>
+      <div className="grid grid-cols-3 gap-2 flex-shrink-0">
+        <div className="bg-amber-500 rounded p-2 text-white text-center">
+          <p className="text-[10px] text-amber-100">Available</p>
+          <p className="text-lg font-bold">{totalAvailable.toLocaleString()}g</p>
         </div>
-        <div className="bg-gradient-to-br from-blue-400 to-blue-500 rounded-xl p-6 text-white">
-          <p className="text-blue-100">Reserved Gold</p>
-          <p className="text-3xl font-bold mt-1">{totalReserved.toLocaleString()}g</p>
+        <div className="bg-blue-500 rounded p-2 text-white text-center">
+          <p className="text-[10px] text-blue-100">Reserved</p>
+          <p className="text-lg font-bold">{totalReserved.toLocaleString()}g</p>
         </div>
-        <div className="bg-gradient-to-br from-green-400 to-green-500 rounded-xl p-6 text-white">
-          <p className="text-green-100">Delivered Gold</p>
-          <p className="text-3xl font-bold mt-1">{totalDelivered.toLocaleString()}g</p>
+        <div className="bg-green-500 rounded p-2 text-white text-center">
+          <p className="text-[10px] text-green-100">Delivered</p>
+          <p className="text-lg font-bold">{totalDelivered.toLocaleString()}g</p>
         </div>
       </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input type="text" placeholder="Search vaults..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+      <div className="relative flex-shrink-0">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+          className="page-excel-search" />
       </div>
-
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4">
-          {error}
-        </div>
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded p-2 text-xs flex-shrink-0">{error}</div>
       )}
-
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>{['Vault Name', 'Available (g)', 'Reserved (g)', 'Delivered (g)', 'Total (g)'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{h}</th>)}</tr>
+      <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div className="overflow-auto flex-1">
+          <table className="table-excel">
+            <thead className="sticky top-0 z-10">
+              <tr>{['Vault', 'Available', 'Reserved', 'Delivered', 'Total'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody>
               {filteredVaults.map((vault) => (
-                <tr key={vault.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 text-sm font-medium text-slate-900">{vault.vault_name}</td>
-                  <td className="px-6 py-4 text-sm text-green-600">{toNumber(vault.available_gold).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-amber-600">{toNumber(vault.reserved_gold).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-blue-600">{toNumber(vault.delivered_gold).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900 font-medium">{(toNumber(vault.available_gold) + toNumber(vault.reserved_gold) + toNumber(vault.delivered_gold)).toLocaleString()}</td>
+                <tr key={vault.id}>
+                  <td className="font-medium text-slate-900">{vault.vault_name}</td>
+                  <td className="text-green-600">{toNumber(vault.available_gold).toLocaleString()}</td>
+                  <td className="text-amber-600">{toNumber(vault.reserved_gold).toLocaleString()}</td>
+                  <td className="text-blue-600">{toNumber(vault.delivered_gold).toLocaleString()}</td>
+                  <td className="text-slate-900 font-medium">{(toNumber(vault.available_gold) + toNumber(vault.reserved_gold) + toNumber(vault.delivered_gold)).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {filteredVaults.length === 0 && <div className="p-12 text-center text-slate-500">No vaults found</div>}
+        {filteredVaults.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No vaults found</div>}
       </div>
 
       {showModal && (

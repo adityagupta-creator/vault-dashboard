@@ -55,48 +55,48 @@ export default function TradeTrackingPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div><h1 className="text-2xl font-bold text-slate-900">Trade Tracking</h1><p className="text-slate-500">Track client orders with supplier mappings</p></div>
-        <button onClick={exportToCSV} className="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors">
-          <Download className="w-5 h-5 mr-2" />Export CSV
+    <div className="page-excel space-y-1">
+      <div className="page-excel-header flex-shrink-0">
+        <h1 className="page-excel-title">Trade Tracking</h1>
+        <button onClick={exportToCSV} className="inline-flex items-center px-2 py-1 text-xs bg-green-500 hover:bg-green-600 text-white font-medium rounded transition-colors">
+          <Download className="w-4 h-4 mr-1" />Export CSV
         </button>
       </div>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input type="text" placeholder="Search by client name or order number..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+      <div className="relative flex-shrink-0">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+          className="page-excel-search" />
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>{['Date', 'Client', 'Grams', 'Rate', 'Revenue', 'Supplier', 'Purchase', 'Margin', '%'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">{h}</th>)}</tr>
+      <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div className="overflow-auto flex-1">
+          <table className="table-excel">
+            <thead className="sticky top-0 z-10">
+              <tr>{['Date', 'Client', 'Grams', 'Rate', 'Revenue', 'Supplier', 'Purchase', 'Margin', '%'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody>
               {filteredTrades.map((trade) => {
                 const netRevenue = trade.order.net_revenue || 0
                 const netPurchase = trade.purchase?.net_purchase || 0
                 const margin = netRevenue - netPurchase
                 const marginPercent = netPurchase > 0 ? (margin / netPurchase * 100) : 0
                 return (
-                  <tr key={trade.order.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-4 text-sm text-slate-900">{trade.order.order_date}</td>
-                    <td className="px-4 py-4 text-sm text-slate-900">{trade.order.client_name}</td>
-                    <td className="px-4 py-4 text-sm text-slate-900">{trade.order.grams}g</td>
-                    <td className="px-4 py-4 text-sm text-slate-900">₹{trade.order.quoted_rate?.toLocaleString() || '-'}</td>
-                    <td className="px-4 py-4 text-sm text-slate-900">₹{netRevenue.toLocaleString()}</td>
-                    <td className="px-4 py-4 text-sm text-slate-600">{trade.purchase?.supplier_name || '-'}</td>
-                    <td className="px-4 py-4 text-sm text-slate-600">₹{netPurchase.toLocaleString()}</td>
-                    <td className={`px-4 py-4 text-sm font-medium ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{margin.toLocaleString()}</td>
-                    <td className={`px-4 py-4 text-sm font-medium ${marginPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>{marginPercent.toFixed(2)}%</td>
+                  <tr key={trade.order.id}>
+                    <td className="text-slate-900">{trade.order.order_date}</td>
+                    <td className="text-slate-900">{trade.order.client_name}</td>
+                    <td className="text-slate-900">{trade.order.grams}g</td>
+                    <td className="text-slate-900">₹{trade.order.quoted_rate?.toLocaleString() || '-'}</td>
+                    <td className="text-slate-900">₹{netRevenue.toLocaleString()}</td>
+                    <td className="text-slate-600">{trade.purchase?.supplier_name || '-'}</td>
+                    <td className="text-slate-600">₹{netPurchase.toLocaleString()}</td>
+                    <td className={`font-medium ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{margin.toLocaleString()}</td>
+                    <td className={`font-medium ${marginPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>{marginPercent.toFixed(2)}%</td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
-        {filteredTrades.length === 0 && <div className="p-12 text-center text-slate-500">No trades found</div>}
+        {filteredTrades.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No trades found</div>}
       </div>
     </div>
   )

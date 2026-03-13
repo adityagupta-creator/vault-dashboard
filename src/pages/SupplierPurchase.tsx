@@ -73,30 +73,30 @@ export default function SupplierPurchasePage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div><h1 className="text-2xl font-bold text-slate-900">Supplier Purchase</h1><p className="text-slate-500">Manage supplier bookings</p></div>
+    <div className="page-excel space-y-1">
+      <div className="page-excel-header flex-shrink-0">
+        <h1 className="page-excel-title">Supplier Purchase</h1>
         <div className="flex items-center gap-2">
-          <Link to="/hardik-coin" className="inline-flex items-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors">
-            <FileSpreadsheet className="w-5 h-5 mr-2" />Hardik Coin
+          <Link to="/hardik-coin" className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors">
+            <FileSpreadsheet className="w-4 h-4 mr-1" />Hardik Coin
           </Link>
-          <button onClick={() => setShowModal(true)} className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors">
-            <Plus className="w-5 h-5 mr-2" />Book Supplier
+          <button onClick={() => setShowModal(true)} className="inline-flex items-center px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-medium rounded transition-colors">
+            <Plus className="w-4 h-4 mr-1" />Book Supplier
           </button>
         </div>
       </div>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input type="text" placeholder="Search suppliers..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+      <div className="relative flex-shrink-0">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+          className="page-excel-search" />
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>{['Supplier', 'Grams', 'Rate', 'Net Purchase', 'GST (2%)', 'Gross', 'Trade Margin', 'Margin %', 'Status', 'Actions'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{h}</th>)}</tr>
+      <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div className="overflow-auto flex-1">
+          <table className="table-excel">
+            <thead className="sticky top-0 z-10">
+              <tr>{['Supplier', 'Grams', 'Rate', 'Net', 'GST', 'Gross', 'Margin', 'Margin %', 'Status', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody>
               {filteredPurchases.map((purchase) => {
                 const order = ordersMap[purchase.client_order_id]
                 const nr = order?.net_revenue ?? 0
@@ -104,21 +104,21 @@ export default function SupplierPurchasePage() {
                 const margin = nr && np ? nr - np : null
                 const marginPct = nr && margin != null ? ((margin / nr) * 100).toFixed(2) + '%' : '-'
                 return (
-                <tr key={purchase.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 text-sm text-slate-900">{purchase.supplier_name}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">{purchase.supplier_grams}g</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">₹{purchase.supplier_rate?.toLocaleString() || '-'}/10g</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">₹{purchase.net_purchase?.toLocaleString() || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">₹{purchase.gst_2?.toLocaleString() || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">₹{purchase.gross_purchase?.toLocaleString() || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">{margin != null ? `₹${margin.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{marginPct}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${purchase.supplier_status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{purchase.supplier_status}</span>
+                <tr key={purchase.id}>
+                  <td className="text-slate-900">{purchase.supplier_name}</td>
+                  <td className="text-slate-900">{purchase.supplier_grams}g</td>
+                  <td className="text-slate-900">₹{purchase.supplier_rate?.toLocaleString() || '-'}/10g</td>
+                  <td className="text-slate-900">₹{purchase.net_purchase?.toLocaleString() || '-'}</td>
+                  <td className="text-slate-900">₹{purchase.gst_2?.toLocaleString() || '-'}</td>
+                  <td className="text-slate-900">₹{purchase.gross_purchase?.toLocaleString() || '-'}</td>
+                  <td className="text-slate-900">{margin != null ? `₹${margin.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}</td>
+                  <td className="text-slate-600">{marginPct}</td>
+                  <td>
+                    <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${purchase.supplier_status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{purchase.supplier_status}</span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td>
                     {purchase.supplier_status === 'booked' && (
-                      <button onClick={() => confirmPurchase(purchase.id)} className="inline-flex items-center px-2 py-1 text-xs bg-green-500 hover:bg-green-600 text-white rounded transition-colors">
+                      <button onClick={() => confirmPurchase(purchase.id)} className="inline-flex items-center px-1.5 py-0.5 text-[10px] bg-green-500 hover:bg-green-600 text-white rounded">
                         <Check className="w-3 h-3 mr-1" />Confirm
                       </button>
                     )}
@@ -129,7 +129,7 @@ export default function SupplierPurchasePage() {
             </tbody>
           </table>
         </div>
-        {filteredPurchases.length === 0 && <div className="p-12 text-center text-slate-500">No purchases found</div>}
+        {filteredPurchases.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No purchases found</div>}
       </div>
 
       {showModal && (

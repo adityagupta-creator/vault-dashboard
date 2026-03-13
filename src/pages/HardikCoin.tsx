@@ -104,54 +104,36 @@ export default function HardikCoinPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Hardik Coin</h1>
-          <p className="text-slate-500">Full trade sheet with purchase side</p>
-        </div>
+    <div className="page-excel space-y-1">
+      <div className="page-excel-header flex-shrink-0">
+        <h1 className="page-excel-title">Hardik Coin</h1>
         <div className="flex items-center gap-2">
-          <Link
-            to="/supplier-purchase"
-            className="inline-flex items-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors"
-          >
-            <Truck className="w-5 h-5 mr-2" />
-            Supplier Purchase
+          <Link to="/supplier-purchase" className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors">
+            <Truck className="w-4 h-4 mr-1" />Supplier
           </Link>
-          <button
-            onClick={fetchData}
-            className="inline-flex items-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors"
-          >
-            <RefreshCw className="w-5 h-5 mr-2" />
-            Refresh
+          <button onClick={fetchData} className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors">
+            <RefreshCw className="w-4 h-4 mr-1" />Refresh
           </button>
         </div>
       </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input
-          type="text"
-          placeholder="Search by client, symbol or supplier..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-        />
+      <div className="relative flex-shrink-0">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+          className="page-excel-search" />
       </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1400px] text-sm">
-            <thead className="bg-[#1F4E79]">
+      <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div className="overflow-auto flex-1">
+          <table className="table-excel w-full min-w-[1200px] [&_thead_th]:bg-[#1F4E79] [&_thead_th]:text-white [&_thead_th]:border-slate-600">
+            <thead className="sticky top-0 z-10">
               <tr>
                 {COLS.map((h) => (
-                  <th key={h} className="px-3 py-3 text-left text-xs font-medium text-white uppercase whitespace-nowrap">
+                  <th key={h} className="px-2 py-1.5 text-left text-[10px] font-medium text-white uppercase whitespace-nowrap border border-slate-600">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody>
               {filtered.map(({ order, purchase }) => {
                 const nr = toNum(order.net_revenue)
                 const np = toNum(purchase?.net_purchase)
@@ -159,46 +141,46 @@ export default function HardikCoinPage() {
                 const marginPct = nr && margin != null ? (margin / nr) * 100 : null
 
                 return (
-                  <tr key={order.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-2 text-slate-900 whitespace-nowrap">{formatDate(order.order_date)}</td>
-                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{formatTime(order.order_time)}</td>
-                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{formatDate(order.delivery_date)}</td>
-                    <td className="px-3 py-2 text-slate-600">{order.purity ?? '-'}</td>
-                    <td className="px-3 py-2 text-slate-900 font-medium">{order.client_name}</td>
-                    <td className="px-3 py-2 text-slate-600">{order.product_symbol ?? '-'}</td>
-                    <td className="px-3 py-2 text-slate-900 text-right">{order.quantity ?? 1}</td>
-                    <td className="px-3 py-2 text-slate-900 text-right">{order.grams}g</td>
-                    <td className="px-3 py-2 text-slate-900 text-right">₹{order.quoted_rate?.toLocaleString() ?? '-'}</td>
-                    <td className="px-3 py-2 text-slate-900 text-right">₹{nr ? nr.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</td>
-                    <td className="px-3 py-2 text-slate-600 text-right">₹{order.gst_amount?.toLocaleString() ?? '-'}</td>
-                    <td className="px-3 py-2 text-slate-600 text-right">₹{order.tcs_amount?.toLocaleString() ?? '-'}</td>
-                    <td className="px-3 py-2 text-slate-900 text-right">₹{order.gross_revenue?.toLocaleString() ?? '-'}</td>
-                    <td className="px-3 py-2 text-slate-900 text-right">{order.grams}</td>
-                    <td className="px-3 py-2 text-slate-600 text-right">{purchase ? `₹${(purchase.supplier_rate ?? 0).toLocaleString()}/10g` : '-'}</td>
-                    <td className="px-3 py-2 text-slate-600 text-right">{purchase ? `₹${(purchase.supplier_making_charges ?? 0).toLocaleString()}` : '-'}</td>
-                    <td className="px-3 py-2 text-slate-900 text-right">
+                  <tr key={order.id}>
+                    <td className="text-slate-900 whitespace-nowrap">{formatDate(order.order_date)}</td>
+                    <td className=" text-slate-600 whitespace-nowrap">{formatTime(order.order_time)}</td>
+                    <td className=" text-slate-600 whitespace-nowrap">{formatDate(order.delivery_date)}</td>
+                    <td className=" text-slate-600">{order.purity ?? '-'}</td>
+                    <td className=" text-slate-900 font-medium">{order.client_name}</td>
+                    <td className=" text-slate-600">{order.product_symbol ?? '-'}</td>
+                    <td className=" text-slate-900 text-right">{order.quantity ?? 1}</td>
+                    <td className=" text-slate-900 text-right">{order.grams}g</td>
+                    <td className=" text-slate-900 text-right">₹{order.quoted_rate?.toLocaleString() ?? '-'}</td>
+                    <td className=" text-slate-900 text-right">₹{nr ? nr.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</td>
+                    <td className=" text-slate-600 text-right">₹{order.gst_amount?.toLocaleString() ?? '-'}</td>
+                    <td className=" text-slate-600 text-right">₹{order.tcs_amount?.toLocaleString() ?? '-'}</td>
+                    <td className=" text-slate-900 text-right">₹{order.gross_revenue?.toLocaleString() ?? '-'}</td>
+                    <td className=" text-slate-900 text-right">{order.grams}</td>
+                    <td className=" text-slate-600 text-right">{purchase ? `₹${(purchase.supplier_rate ?? 0).toLocaleString()}/10g` : '-'}</td>
+                    <td className=" text-slate-600 text-right">{purchase ? `₹${(purchase.supplier_making_charges ?? 0).toLocaleString()}` : '-'}</td>
+                    <td className=" text-slate-900 text-right">
                       {purchase && purchase.net_purchase != null ? `₹${purchase.net_purchase.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
-                    <td className="px-3 py-2 text-slate-600 text-right">
+                    <td className=" text-slate-600 text-right">
                       {purchase && purchase.gst_2 != null ? `₹${purchase.gst_2.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
-                    <td className="px-3 py-2 text-slate-900 text-right">
+                    <td className=" text-slate-900 text-right">
                       {purchase && purchase.gross_purchase != null ? `₹${purchase.gross_purchase.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
-                    <td className="px-3 py-2 text-slate-900">{purchase?.supplier_name ?? '-'}</td>
-                    <td className="px-3 py-2 text-slate-900 text-right">
+                    <td className=" text-slate-900">{purchase?.supplier_name ?? '-'}</td>
+                    <td className=" text-slate-900 text-right">
                       {margin != null ? `₹${margin.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
-                    <td className="px-3 py-2 text-slate-600 text-right">
+                    <td className=" text-slate-600 text-right">
                       {marginPct != null ? `${marginPct.toFixed(2)}%` : '-'}
                     </td>
-                    <td className="px-3 py-2 text-slate-600">
+                    <td className=" text-slate-600">
                       {order.city || extractCity(order.product_symbol) || '-'}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="">
                       <span className="text-slate-600">{order.trade_status?.replace(/_/g, ' ') ?? '-'}</span>
                     </td>
-                    <td className="px-3 py-2 text-slate-600">
+                    <td className=" text-slate-600">
                       {salesPersonFor(order.product_symbol) || '-'}
                     </td>
                   </tr>
@@ -207,9 +189,7 @@ export default function HardikCoinPage() {
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && (
-          <div className="p-12 text-center text-slate-500">No trades found</div>
-        )}
+        {filtered.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No trades found</div>}
       </div>
     </div>
   )

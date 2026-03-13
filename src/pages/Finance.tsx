@@ -66,38 +66,38 @@ export default function FinancePage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div><h1 className="text-2xl font-bold text-slate-900">Finance Verification</h1><p className="text-slate-500">Verify and track payments</p></div>
-        <button onClick={() => setShowModal(true)} className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors">Record Payment</button>
+    <div className="page-excel space-y-1">
+      <div className="page-excel-header flex-shrink-0">
+        <h1 className="page-excel-title">Finance Verification</h1>
+        <button onClick={() => setShowModal(true)} className="inline-flex items-center px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-medium rounded transition-colors">Record Payment</button>
       </div>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input type="text" placeholder="Search by client name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+      <div className="relative flex-shrink-0">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+          className="page-excel-search" />
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>{['Client', 'Expected', 'Received', 'Date', 'Reference', 'Status', 'Actions'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{h}</th>)}</tr>
+      <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div className="overflow-auto flex-1">
+          <table className="table-excel">
+            <thead className="sticky top-0 z-10">
+              <tr>{['Client', 'Expected', 'Received', 'Date', 'Reference', 'Status', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody>
               {filteredPayments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 text-sm text-slate-900">{payment.client_name}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">₹{payment.expected_amount?.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">₹{payment.amount_received?.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{payment.payment_date || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{payment.payment_reference || '-'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[payment.payment_status] || 'bg-slate-100'}`}>{payment.payment_status}</span>
+                <tr key={payment.id}>
+                  <td className="text-slate-900">{payment.client_name}</td>
+                  <td className="text-slate-900">₹{payment.expected_amount?.toLocaleString()}</td>
+                  <td className="text-slate-900">₹{payment.amount_received?.toLocaleString()}</td>
+                  <td className="text-slate-600">{payment.payment_date || '-'}</td>
+                  <td className="text-slate-600">{payment.payment_reference || '-'}</td>
+                  <td>
+                    <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${statusColors[payment.payment_status] || 'bg-slate-100'}`}>{payment.payment_status}</span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td>
                     {payment.payment_status === 'pending' && (
-                      <div className="flex gap-2">
-                        <button onClick={() => verifyPayment(payment.id, 'verified')} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Approve"><Check className="w-5 h-5" /></button>
-                        <button onClick={() => verifyPayment(payment.id, 'rejected')} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Reject"><X className="w-5 h-5" /></button>
+                      <div className="flex gap-1">
+                        <button onClick={() => verifyPayment(payment.id, 'verified')} className="p-0.5 text-green-600 hover:bg-green-50 rounded" title="Approve"><Check className="w-4 h-4" /></button>
+                        <button onClick={() => verifyPayment(payment.id, 'rejected')} className="p-0.5 text-red-600 hover:bg-red-50 rounded" title="Reject"><X className="w-4 h-4" /></button>
                       </div>
                     )}
                   </td>
@@ -106,7 +106,7 @@ export default function FinancePage() {
             </tbody>
           </table>
         </div>
-        {filteredPayments.length === 0 && <div className="p-12 text-center text-slate-500">No payments found</div>}
+        {filteredPayments.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No payments found</div>}
       </div>
 
       {showModal && (

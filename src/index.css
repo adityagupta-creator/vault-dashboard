@@ -1,3 +1,30 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .page-excel {
+    @apply flex flex-col flex-1 min-h-0 overflow-hidden;
+  }
+  .page-excel-header {
+    @apply flex flex-wrap items-center justify-between gap-2 py-1;
+  }
+  .page-excel-title {
+    @apply text-base font-semibold text-slate-900;
+  }
+  .page-excel-search {
+    @apply w-full max-w-xs pl-8 pr-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-amber-500;
+  }
+  .table-excel {
+    @apply w-full border-collapse text-xs;
+  }
+  .table-excel th {
+    @apply px-2 py-1.5 text-left font-medium text-slate-600 uppercase whitespace-nowrap bg-slate-100 border border-slate-200;
+  }
+  .table-excel td {
+    @apply px-2 py-1 border border-slate-200;
+  }
+  .table-excel tbody tr:hover {
+    @apply bg-slate-50;
+  }
+}

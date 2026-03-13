@@ -129,8 +129,8 @@ export default function MainLayout() {
       </div>
 
       {/* Main content */}
-      <div className={`transition-all ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
-        <div className="hidden lg:flex items-center justify-between p-4 bg-white border-b border-slate-200">
+      <div className={`transition-all flex flex-col min-h-screen ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
+        <div className="hidden lg:flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-200">
           <button
             onClick={() => setSidebarCollapsed((v) => !v)}
             className="p-2 rounded-md border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
@@ -141,13 +141,13 @@ export default function MainLayout() {
           </button>
           <div />
         </div>
-        <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200">
+        <div className="lg:hidden flex items-center justify-between px-3 py-2 bg-white border-b border-slate-200">
           <span className="text-lg font-bold text-amber-600">SafeGold</span>
           <button onClick={() => setSidebarOpen(true)}>
             <Menu className="w-6 h-6 text-slate-600" />
           </button>
         </div>
-        <main className="p-6">
+        <main className="p-2 flex-1 flex flex-col min-h-0 overflow-hidden">
           <Outlet />
         </main>
       </div>

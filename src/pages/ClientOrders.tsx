@@ -386,13 +386,12 @@ export default function ClientOrdersPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Client Orders</h1>
-          <p className="text-slate-500">Manage and track client orders</p>
+    <div className="page-excel space-y-1">
+      <div className="page-excel-header flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <h1 className="page-excel-title">Client Orders</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -403,31 +402,31 @@ export default function ClientOrdersPage() {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={importing}
-            className="inline-flex items-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors disabled:opacity-60"
+            className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors disabled:opacity-60"
           >
-            <Upload className="w-5 h-5 mr-2" />
+            <Upload className="w-4 h-4 mr-1" />
             {importing ? 'Importing...' : 'Import Sheet'}
           </button>
-          <button onClick={() => setShowModal(true)} className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors">
-            <Plus className="w-5 h-5 mr-2" />New Order
+          <button onClick={() => setShowModal(true)} className="inline-flex items-center px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-medium rounded transition-colors">
+            <Plus className="w-4 h-4 mr-1" />New Order
           </button>
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input type="text" placeholder="Search by client name or order number..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+      <div className="relative flex-shrink-0">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+          className="page-excel-search" />
       </div>
 
       {importError && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700 flex-shrink-0">
           {importError}
         </div>
       )}
 
       {importSummary && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 space-y-1">
+        <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-700 flex-shrink-0">
           <p className="font-medium">Imported {importSummary.inserted} new orders from {importSummary.fileName}.</p>
           {(importSummary.duplicates ?? 0) > 0 && <p className="text-amber-700">Skipped {importSummary.duplicates} duplicate orders.</p>}
           {importSummary.skipped > 0 && <p>Skipped {importSummary.skipped} rows with missing data.</p>}
@@ -437,44 +436,44 @@ export default function ClientOrdersPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-250px)] min-h-[400px]">
-        <div className="overflow-auto flex-1 relative">
-          <table className="w-full border-collapse">
-            <thead className="bg-slate-50 sticky top-0 z-20 shadow-[0_1px_0_0_#e2e8f0]">
+      <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div className="overflow-auto flex-1">
+          <table className="table-excel">
+            <thead className="sticky top-0 z-10">
               <tr>
                 {['Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', ...dynamicKeys, 'Actions'].map((h, i) => (
-                  <th key={h} className={`px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap bg-slate-50 ${i === 0 ? 'sticky left-0 z-30 border-r border-slate-200' : ''}`}>
+                  <th key={h} className={i === 0 ? 'sticky left-0 z-20' : ''}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody>
               {filteredOrders.map((order) => (
-                <tr key={order.id} className={`group transition-colors ${order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : 'bg-white hover:bg-slate-50'}`}>
-                  <td className="px-6 py-4 text-sm text-slate-900 sticky left-0 z-10 bg-inherit border-r border-slate-200">{order.order_number || '-'}</td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-slate-900">{order.client_name}</p>
-                    {order.company_name && <p className="text-xs text-slate-500">{order.company_name}</p>}
+                <tr key={order.id} className={order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : ''}>
+                  <td className="text-slate-900 sticky left-0 z-10 bg-inherit">{order.order_number || '-'}</td>
+                  <td className="text-slate-900">
+                    <span className="font-medium">{order.client_name}</span>
+                    {order.company_name && <span className="text-slate-500 block">{order.company_name}</span>}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{order.product_symbol || '-'} {order.purity ? `(${order.purity})` : ''}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">{order.grams}g</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">₹{order.quoted_rate?.toLocaleString() || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-slate-900">₹{order.gross_revenue?.toLocaleString() || '-'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[order.trade_status] || 'bg-slate-100'}`}>
+                  <td className="text-slate-600">{order.product_symbol || '-'} {order.purity ? `(${order.purity})` : ''}</td>
+                  <td className="text-slate-900">{order.grams}g</td>
+                  <td className="text-slate-900">₹{order.quoted_rate?.toLocaleString() || '-'}</td>
+                  <td className="text-slate-900">₹{order.gross_revenue?.toLocaleString() || '-'}</td>
+                  <td>
+                    <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${statusColors[order.trade_status] || 'bg-slate-100'}`}>
                       {order.trade_status?.replace(/_/g, ' ')}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td>
                     {order.trade_status === 'pending_supplier_booking' && (
-                      <button onClick={() => sendToSupplier(order.id)} className="inline-flex items-center px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors whitespace-nowrap">
+                      <button onClick={() => sendToSupplier(order.id)} className="inline-flex items-center px-1.5 py-0.5 text-[10px] bg-blue-500 hover:bg-blue-600 text-white rounded whitespace-nowrap">
                         <Send className="w-3 h-3 mr-1" />Send to Supplier
                       </button>
                     )}
                   </td>
                   {dynamicKeys.map(key => (
-                    <td key={key} className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                    <td key={key} className="text-slate-600 whitespace-nowrap">
                       {/* @ts-ignore */}
                       {order.raw_data?.[key] !== undefined ? String(order.raw_data[key]) : '-'}
                     </td>
@@ -484,7 +483,7 @@ export default function ClientOrdersPage() {
             </tbody>
           </table>
         </div>
-        {filteredOrders.length === 0 && <div className="p-12 text-center text-slate-500">No orders found</div>}
+        {filteredOrders.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No orders found</div>}
       </div>
 
       {showModal && (
