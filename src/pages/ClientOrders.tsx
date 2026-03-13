@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../api/supabase'
 import { useAuthStore } from '../store/auth'
-import { Plus, Search, Send, X } from 'lucide-react'
+import { Plus, Search, Send, Upload, X } from 'lucide-react'
 import type { ClientOrder } from '../types'
+import * as XLSX from 'xlsx'
 
 export default function ClientOrdersPage() {
   const { user } = useAuthStore()
@@ -11,6 +12,10 @@ export default function ClientOrdersPage() {
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [saving, setSaving] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importSummary, setImportSummary] = useState<{ inserted: number; skipped: number; errors: string[]; fileName: string } | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [formData, setFormData] = useState({
     client_name: '', company_name: '',
@@ -21,6 +26,171 @@ export default function ClientOrdersPage() {
   })
 
   useEffect(() => { fetchOrders() }, [])
+
+  const normalizeKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+  const toNumber = (value: unknown) => {
+    if (value === null || value === undefined || value === '') return null
+    if (typeof value === 'number' && !Number.isNaN(value)) return value
+    const cleaned = String(value).replace(/,/g, '').trim()
+    if (!cleaned) return null
+    const parsed = Number(cleaned)
+    return Number.isNaN(parsed) ? null : parsed
+  }
+
+  const toText = (value: unknown) => {
+    if (value === null || value === undefined) return null
+    const text = String(value).trim()
+    return text.length ? text : null
+  }
+
+  const toIsoDate = (value: unknown) => {
+    if (value === null || value === undefined || value === '') return null
+    if (value instanceof Date) return value.toISOString().split('T')[0]
+    if (typeof value === 'number') {
+      const parsed = XLSX.SSF.parse_date_code(value)
+      if (parsed) {
+        const year = String(parsed.y).padStart(4, '0')
+        const month = String(parsed.m).padStart(2, '0')
+        const day = String(parsed.d).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
+    }
+    const text = String(value).trim()
+    if (!text) return null
+    const match = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/)
+    if (match) {
+      const [, day, month, yearRaw] = match
+      const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    }
+    const parsedDate = new Date(text)
+    return Number.isNaN(parsedDate.valueOf()) ? null : parsedDate.toISOString().split('T')[0]
+  }
+
+  const toTimeString = (value: unknown) => {
+    if (value === null || value === undefined || value === '') return null
+    if (value instanceof Date) return value.toTimeString().slice(0, 8)
+    if (typeof value === 'number' && value >= 0 && value < 1) {
+      const totalSeconds = Math.round(value * 24 * 60 * 60)
+      const hours = String(Math.floor(totalSeconds / 3600) % 24).padStart(2, '0')
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
+      const seconds = String(totalSeconds % 60).padStart(2, '0')
+      return `${hours}:${minutes}:${seconds}`
+    }
+    const text = String(value).trim()
+    if (!text) return null
+    return text.length === 5 ? `${text}:00` : text
+  }
+
+  const insertOrdersInChunks = async (payloads: any[]) => {
+    const chunkSize = 200
+    for (let i = 0; i < payloads.length; i += chunkSize) {
+      const chunk = payloads.slice(i, i + chunkSize)
+      const { error } = await supabase.from('client_orders').insert(chunk)
+      if (error) throw error
+    }
+  }
+
+  const sendOrderNotification = async (count: number, fileName: string) => {
+    const recipient = import.meta.env.VITE_MEGHNA_EMAIL
+    if (!recipient) return
+    const functionName = import.meta.env.VITE_ORDER_NOTIFY_FUNCTION || 'notify-new-orders'
+    try {
+      await supabase.functions.invoke(functionName, {
+        body: { recipient, count, fileName, source: 'sheet' },
+      })
+    } catch (error) {
+      console.error('Error sending order notification:', error)
+    }
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setImporting(true)
+    setImportError(null)
+    setImportSummary(null)
+
+    try {
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array', cellDates: true })
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      if (!sheet) throw new Error('No worksheet found in the uploaded file.')
+
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
+      if (!rows.length) throw new Error('The uploaded sheet is empty.')
+
+      const payloads: any[] = []
+      const errors: string[] = []
+      let skipped = 0
+
+      rows.forEach((row, index) => {
+        const normalizedRow: Record<string, unknown> = {}
+        Object.entries(row).forEach(([key, value]) => {
+          normalizedRow[normalizeKey(key)] = value
+        })
+
+        const clientName = toText(normalizedRow.partyname)
+        const orderDate = toIsoDate(normalizedRow.date)
+        const orderTime = toTimeString(normalizedRow.time)
+        const deliveryDate = toIsoDate(normalizedRow.deliverydate)
+        const purity = toText(normalizedRow.purity)
+        const symbol = toText(normalizedRow.symbol)
+        const quantitySold = toNumber(normalizedRow.quantitysold)
+        const grams = toNumber(normalizedRow.grams)
+        const quotedRate = toNumber(normalizedRow.quotedrate) ?? 0
+        const netRevenue = toNumber(normalizedRow.netrevenue1) ?? (grams ? grams * quotedRate : 0)
+        const gstAmount = toNumber(normalizedRow.gst1) ?? (netRevenue * 0.03)
+        const tcsAmount = toNumber(normalizedRow.tcs) ?? (netRevenue * 0.001)
+        const grossRevenue = toNumber(normalizedRow.grossrevenue) ?? (netRevenue + gstAmount + tcsAmount)
+
+        if (!clientName || !orderDate || !grams) {
+          skipped += 1
+          errors.push(`Row ${index + 2}: missing client name, order date, or grams.`)
+          return
+        }
+
+        payloads.push({
+          client_name: clientName,
+          company_name: null,
+          order_date: orderDate,
+          order_time: orderTime,
+          delivery_date: deliveryDate,
+          product_symbol: symbol,
+          purity,
+          quantity: quantitySold ? Math.round(quantitySold) : 1,
+          grams,
+          quoted_rate: quotedRate,
+          making_charges: 0,
+          net_revenue: netRevenue,
+          gst_amount: gstAmount,
+          tcs_amount: tcsAmount,
+          gross_revenue: grossRevenue,
+          order_source: 'offline',
+          city: null,
+          trade_status: 'pending_supplier_booking',
+          remarks: `Imported from sheet: ${file.name}`,
+          created_by: user?.id || null,
+        })
+      })
+
+      if (!payloads.length) {
+        throw new Error('No valid rows found to import. Please check the sheet formatting.')
+      }
+
+      await insertOrdersInChunks(payloads)
+      await fetchOrders()
+      await sendOrderNotification(payloads.length, file.name)
+      setImportSummary({ inserted: payloads.length, skipped, errors, fileName: file.name })
+    } catch (error) {
+      setImportError((error as Error).message)
+    } finally {
+      setImporting(false)
+      event.target.value = ''
+    }
+  }
 
   const fetchOrders = async () => {
     try {
@@ -94,9 +264,26 @@ export default function ClientOrdersPage() {
           <h1 className="text-2xl font-bold text-slate-900">Client Orders</h1>
           <p className="text-slate-500">Manage and track client orders</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors">
-          <Plus className="w-5 h-5 mr-2" />New Order
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="inline-flex items-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors disabled:opacity-60"
+          >
+            <Upload className="w-5 h-5 mr-2" />
+            {importing ? 'Importing...' : 'Import Sheet'}
+          </button>
+          <button onClick={() => setShowModal(true)} className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors">
+            <Plus className="w-5 h-5 mr-2" />New Order
+          </button>
+        </div>
       </div>
 
       <div className="relative">
@@ -104,6 +291,22 @@ export default function ClientOrdersPage() {
         <input type="text" placeholder="Search by client name or order number..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
       </div>
+
+      {importError && (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {importError}
+        </div>
+      )}
+
+      {importSummary && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 space-y-1">
+          <p className="font-medium">Imported {importSummary.inserted} orders from {importSummary.fileName}.</p>
+          {importSummary.skipped > 0 && <p>Skipped {importSummary.skipped} rows with missing data.</p>}
+          {importSummary.errors.slice(0, 3).map((message, idx) => (
+            <p key={`${message}-${idx}`}>{message}</p>
+          ))}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
