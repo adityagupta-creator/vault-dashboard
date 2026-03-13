@@ -359,20 +359,22 @@ export default function ClientOrdersPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-250px)] min-h-[400px]">
+        <div className="overflow-auto flex-1 relative">
+          <table className="w-full border-collapse">
+            <thead className="bg-slate-50 sticky top-0 z-20 shadow-[0_1px_0_0_#e2e8f0]">
               <tr>
-                {['Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', ...dynamicKeys, 'Actions'].map(h => (
-                  <th key={h} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap">{h}</th>
+                {['Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', ...dynamicKeys, 'Actions'].map((h, i) => (
+                  <th key={h} className={`px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap bg-slate-50 ${i === 0 ? 'sticky left-0 z-30 border-r border-slate-200' : ''}`}>
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredOrders.map((order) => (
-                <tr key={order.id} className={`transition-colors ${order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
-                  <td className="px-6 py-4 text-sm text-slate-900">{order.order_number || '-'}</td>
+                <tr key={order.id} className={`group transition-colors ${order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : 'bg-white hover:bg-slate-50'}`}>
+                  <td className="px-6 py-4 text-sm text-slate-900 sticky left-0 z-10 bg-inherit border-r border-slate-200">{order.order_number || '-'}</td>
                   <td className="px-6 py-4">
                     <p className="text-sm font-medium text-slate-900">{order.client_name}</p>
                     {order.company_name && <p className="text-xs text-slate-500">{order.company_name}</p>}
