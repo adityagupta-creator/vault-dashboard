@@ -35,12 +35,14 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_MEGHNA_EMAIL: ${{ vars.VITE_MEGHNA_EMAIL }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: dist
-
+          
   deploy:
     needs: build
     runs-on: ubuntu-latest
