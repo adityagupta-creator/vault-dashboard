@@ -94,10 +94,10 @@ export default function SupplierPurchasePage() {
         <div className="overflow-auto flex-1">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
-              <tr>{['Supplier', 'Grams', 'Rate', 'Net', 'GST', 'Gross', 'Margin', 'Margin %', 'Status', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr>
+              <tr>{['Sr.No', 'Supplier', 'Grams', 'Rate', 'Net', 'GST', 'Gross', 'Margin', 'Margin %', 'Status', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {filteredPurchases.map((purchase) => {
+              {filteredPurchases.map((purchase, idx) => {
                 const order = ordersMap[purchase.client_order_id]
                 const nr = order?.net_revenue ?? 0
                 const np = purchase.net_purchase ?? 0
@@ -105,6 +105,7 @@ export default function SupplierPurchasePage() {
                 const marginPct = nr && margin != null ? ((margin / nr) * 100).toFixed(2) + '%' : '-'
                 return (
                 <tr key={purchase.id}>
+                  <td className="text-slate-600 text-center w-12">{idx + 1}</td>
                   <td className="text-slate-900">{purchase.supplier_name}</td>
                   <td className="text-slate-900">{purchase.supplier_grams}g</td>
                   <td className="text-slate-900">₹{purchase.supplier_rate?.toLocaleString() || '-'}/10g</td>

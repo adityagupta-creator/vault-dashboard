@@ -80,13 +80,14 @@ export default function HedgeEntryPage() {
         <div className="overflow-auto flex-1">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
-              <tr>{['Date', 'Supplier', 'Grams', 'Hedge Price', 'MCX Petal', 'Frozen Premium', 'Platform', 'Status'].map(h => <th key={h}>{h}</th>)}</tr>
+              <tr>{['Sr.No', 'Date', 'Supplier', 'Grams', 'Hedge Price', 'MCX Petal', 'Frozen Premium', 'Platform', 'Status'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {hedges.map((hedge) => {
+              {hedges.map((hedge, idx) => {
                 const purchase = getPurchase(hedge.supplier_purchase_id)
                 return (
                   <tr key={hedge.id}>
+                    <td className="text-slate-600 text-center w-12">{idx + 1}</td>
                     <td className="text-slate-900">{hedge.hedge_date}</td>
                     <td className="text-slate-900">{purchase?.supplier_name || '-'}</td>
                     <td className="text-slate-900">{hedge.hedge_grams}g</td>

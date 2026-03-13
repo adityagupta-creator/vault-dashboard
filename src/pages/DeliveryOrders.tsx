@@ -78,13 +78,14 @@ export default function DeliveryOrdersPage() {
         <div className="overflow-auto flex-1">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
-              <tr>{['Invoice #', 'Client', 'SKU', 'Vault', 'Logistics', 'Status', 'Docs'].map(h => <th key={h}>{h}</th>)}</tr>
+              <tr>{['Sr.No', 'Invoice #', 'Client', 'SKU', 'Vault', 'Logistics', 'Status', 'Docs'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {filteredDeliveries.map((delivery) => {
+              {filteredDeliveries.map((delivery, idx) => {
                 const order = getOrder(delivery.client_order_id)
                 return (
                   <tr key={delivery.id}>
+                    <td className="text-slate-600 text-center w-12">{idx + 1}</td>
                     <td className="text-slate-900">{delivery.invoice_number}</td>
                     <td className="text-slate-900">{order?.client_name || '-'}</td>
                     <td className="text-slate-600">{delivery.sku || '-'}</td>

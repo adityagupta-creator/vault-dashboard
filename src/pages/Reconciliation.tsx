@@ -70,13 +70,14 @@ export default function ReconciliationPage() {
         <div className="overflow-auto flex-1">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
-              <tr>{['Client', 'Date', 'Grams', 'Trade', 'Invoice', 'DO', 'Status'].map(h => <th key={h}>{h}</th>)}</tr>
+              <tr>{['Sr.No', 'Client', 'Date', 'Grams', 'Trade', 'Invoice', 'DO', 'Status'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {filteredRecons.map((recon) => {
+              {filteredRecons.map((recon, idx) => {
                 const order = getOrder(recon.client_order_id)
                 return (
                   <tr key={recon.id}>
+                    <td className="text-slate-600 text-center w-12">{idx + 1}</td>
                     <td className="text-slate-900">{order?.client_name || '-'}</td>
                     <td className="text-slate-600">{order?.order_date || '-'}</td>
                     <td className="text-slate-600">{order?.grams || '-'}g</td>

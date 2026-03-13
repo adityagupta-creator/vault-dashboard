@@ -441,17 +441,18 @@ export default function ClientOrdersPage() {
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
               <tr>
-                {['Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', ...dynamicKeys, 'Actions'].map((h, i) => (
-                  <th key={h} className={i === 0 ? 'sticky left-0 z-20' : ''}>
+                {['Sr.No', 'Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', ...dynamicKeys, 'Actions'].map((h, i) => (
+                  <th key={h} className={i <= 1 ? 'sticky left-0 z-20 bg-slate-100' : ''}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((order) => (
+              {filteredOrders.map((order, idx) => (
                 <tr key={order.id} className={order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : ''}>
-                  <td className="text-slate-900 sticky left-0 z-10 bg-inherit">{order.order_number || '-'}</td>
+                  <td className="text-slate-600 text-center sticky left-0 z-10 bg-inherit w-12">{idx + 1}</td>
+                  <td className="text-slate-900 sticky left-12 z-10 bg-inherit border-l border-slate-200">{order.order_number || '-'}</td>
                   <td className="text-slate-900">
                     <span className="font-medium">{order.client_name}</span>
                     {order.company_name && <span className="text-slate-500 block">{order.company_name}</span>}

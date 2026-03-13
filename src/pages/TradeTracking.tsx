@@ -71,16 +71,17 @@ export default function TradeTrackingPage() {
         <div className="overflow-auto flex-1">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
-              <tr>{['Date', 'Client', 'Grams', 'Rate', 'Revenue', 'Supplier', 'Purchase', 'Margin', '%'].map(h => <th key={h}>{h}</th>)}</tr>
+              <tr>{['Sr.No', 'Date', 'Client', 'Grams', 'Rate', 'Revenue', 'Supplier', 'Purchase', 'Margin', '%'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {filteredTrades.map((trade) => {
+              {filteredTrades.map((trade, idx) => {
                 const netRevenue = trade.order.net_revenue || 0
                 const netPurchase = trade.purchase?.net_purchase || 0
                 const margin = netRevenue - netPurchase
                 const marginPercent = netPurchase > 0 ? (margin / netPurchase * 100) : 0
                 return (
                   <tr key={trade.order.id}>
+                    <td className="text-slate-600 text-center w-12">{idx + 1}</td>
                     <td className="text-slate-900">{trade.order.order_date}</td>
                     <td className="text-slate-900">{trade.order.client_name}</td>
                     <td className="text-slate-900">{trade.order.grams}g</td>

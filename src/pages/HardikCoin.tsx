@@ -6,8 +6,9 @@ import { Search, RefreshCw, Truck } from 'lucide-react'
 import { extractCity, salesPersonFor } from '../lib/hardikUtils'
 import type { ClientOrder, SupplierPurchase } from '../types'
 
-/** 26-column Hardik Coin layout – full trade sheet with purchase side */
+/** 27-column Hardik Coin layout – full trade sheet with purchase side */
 const COLS = [
+  'Sr.No',
   'Date',
   'Time',
   'Delivery Date',
@@ -134,7 +135,7 @@ export default function HardikCoinPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(({ order, purchase }) => {
+              {filtered.map(({ order, purchase }, idx) => {
                 const nr = toNum(order.net_revenue)
                 const np = toNum(purchase?.net_purchase)
                 const margin = nr && np ? nr - np : null
@@ -142,6 +143,7 @@ export default function HardikCoinPage() {
 
                 return (
                   <tr key={order.id}>
+                    <td className="text-slate-600 text-center w-12 whitespace-nowrap">{idx + 1}</td>
                     <td className="text-slate-900 whitespace-nowrap">{formatDate(order.order_date)}</td>
                     <td className=" text-slate-600 whitespace-nowrap">{formatTime(order.order_time)}</td>
                     <td className=" text-slate-600 whitespace-nowrap">{formatDate(order.delivery_date)}</td>

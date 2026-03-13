@@ -91,11 +91,12 @@ export default function VaultPage() {
         <div className="overflow-auto flex-1">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
-              <tr>{['Vault', 'Available', 'Reserved', 'Delivered', 'Total'].map(h => <th key={h}>{h}</th>)}</tr>
+              <tr>{['Sr.No', 'Vault', 'Available', 'Reserved', 'Delivered', 'Total'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {filteredVaults.map((vault) => (
+              {filteredVaults.map((vault, idx) => (
                 <tr key={vault.id}>
+                  <td className="text-slate-600 text-center w-12">{idx + 1}</td>
                   <td className="font-medium text-slate-900">{vault.vault_name}</td>
                   <td className="text-green-600">{toNumber(vault.available_gold).toLocaleString()}</td>
                   <td className="text-amber-600">{toNumber(vault.reserved_gold).toLocaleString()}</td>

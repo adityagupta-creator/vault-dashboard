@@ -80,11 +80,12 @@ export default function FinancePage() {
         <div className="overflow-auto flex-1">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
-              <tr>{['Client', 'Expected', 'Received', 'Date', 'Reference', 'Status', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr>
+              <tr>{['Sr.No', 'Client', 'Expected', 'Received', 'Date', 'Reference', 'Status', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {filteredPayments.map((payment) => (
+              {filteredPayments.map((payment, idx) => (
                 <tr key={payment.id}>
+                  <td className="text-slate-600 text-center w-12">{idx + 1}</td>
                   <td className="text-slate-900">{payment.client_name}</td>
                   <td className="text-slate-900">₹{payment.expected_amount?.toLocaleString()}</td>
                   <td className="text-slate-900">₹{payment.amount_received?.toLocaleString()}</td>
