@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { Download } from 'lucide-react'
 import type { ClientOrder } from '../types'
 
@@ -11,7 +12,7 @@ export default function ReportsPage() {
 
   const fetchData = async () => {
     try {
-      const { data } = await supabase.from('client_orders').select('*').order('created_at', { ascending: false })
+      const { data } = await withTimeout(supabase.from('client_orders').select('*').order('created_at', { ascending: false }))
       setOrders(data || [])
     } catch (error) { console.error(error) }
     finally { setLoading(false) }

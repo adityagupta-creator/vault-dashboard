@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { Plus, Search, Send, Upload, X } from 'lucide-react'
 import type { ClientOrder } from '../types'
@@ -81,7 +82,35 @@ export default function ClientOrdersPage() {
     }
     const text = String(value).trim()
     if (!text) return null
-    return text.length === 5 ? `${text}:00` : text
+    // Handle "13 Mar 2026 11:57:05:953" – strip milliseconds for HH:MM:SS
+    const timePart = text.replace(/:(\d{3})$/, '')
+    const match = timePart.match(/\d{1,2}:\d{2}(?::\d{2})?/)
+    return match ? (match[0].length === 5 ? `${match[0]}:00` : match[0]) : (text.length === 5 ? `${text}:00` : text)
+  }
+
+  const parsePurityFromSymbol = (symbol: string | null | undefined) => {
+    if (!symbol) return null
+    const s = String(symbol)
+    if (/\b9999\b/.test(s)) return '99.99'
+    if (/\b999\b/.test(s)) return '99.90'
+    if (/\b995\b/.test(s)) return '99.50'
+    const m = s.match(/\b(\d{3,4})\b/)
+    if (m) {
+      const c = m[1]
+      return c.length === 4 ? `${c.slice(0, 2)}.${c.slice(2)}` : `${c.slice(0, 2)}.${c[2]}0`
+    }
+    return null
+  }
+
+  const parseDateTimeOrDate = (value: unknown) => {
+    if (value === null || value === undefined || value === '') return { date: null, time: null }
+    const text = String(value).trim().replace(/:(\d{3})$/, '')
+    const d = new Date(text)
+    if (Number.isNaN(d.getTime())) return { date: null, time: null }
+    return {
+      date: d.toISOString().split('T')[0],
+      time: d.toTimeString().slice(0, 8),
+    }
   }
 
   const insertOrdersInChunks = async (payloads: any[]) => {
@@ -116,11 +145,35 @@ export default function ClientOrdersPage() {
 
     try {
       const buffer = await file.arrayBuffer()
-      const workbook = XLSX.read(buffer, { type: 'array', cellDates: true })
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      if (!sheet) throw new Error('No worksheet found in the uploaded file.')
-
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
+      let rows: Record<string, unknown>[]
+      const head = new Uint8Array(buffer).slice(0, 512)
+      const textStart = new TextDecoder().decode(head).toLowerCase()
+      const isHtml = textStart.startsWith('<html') || textStart.includes('<html') || textStart.includes('<table')
+      if (isHtml) {
+        const text = new TextDecoder().decode(buffer)
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(text, 'text/html')
+        const table = doc.querySelector('table')
+        if (!table) throw new Error('No table found in the HTML file.')
+        const trs = table.querySelectorAll('tr')
+        if (trs.length < 2) throw new Error('The table is empty.')
+        const headerCells = trs[0].querySelectorAll('td, th')
+        const headers = Array.from(headerCells).map((c) => (c.textContent || '').trim() || `col_${c}`)
+        rows = []
+        for (let i = 1; i < trs.length; i++) {
+          const cells = trs[i].querySelectorAll('td, th')
+          const row: Record<string, unknown> = {}
+          headers.forEach((h, j) => {
+            row[h] = (cells[j]?.textContent || '').trim()
+          })
+          rows.push(row)
+        }
+      } else {
+        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true })
+        const sheet = workbook.Sheets[workbook.SheetNames[0]]
+        if (!sheet) throw new Error('No worksheet found in the uploaded file.')
+        rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
+      }
       if (!rows.length) throw new Error('The uploaded sheet is empty.')
 
       const payloads: any[] = []
@@ -134,19 +187,44 @@ export default function ClientOrdersPage() {
           normalizedRow[normalizeKey(key)] = value
         })
 
-        const clientName = toText(normalizedRow.partyname)
-        const orderDate = toIsoDate(normalizedRow.date)
-        const orderTime = toTimeString(normalizedRow.time)
+        const clientName = toText(normalizedRow.partyname) ?? toText(normalizedRow.namefirm)
+        const timeVal = normalizedRow.time ?? normalizedRow.date
+        const dtParsed = parseDateTimeOrDate(timeVal)
+        const orderDate = toIsoDate(normalizedRow.date) ?? dtParsed.date
+        const orderTime = toTimeString(normalizedRow.time) ?? (orderDate ? dtParsed.time : null)
         const deliveryDate = toIsoDate(normalizedRow.deliverydate)
-        const purity = toText(normalizedRow.purity)
-        const symbol = toText(normalizedRow.symbol)
-        const quantitySold = toNumber(normalizedRow.quantitysold)
-        const grams = toNumber(normalizedRow.grams)
-        const quotedRate = toNumber(normalizedRow.quotedrate) ?? 0
-        const netRevenue = toNumber(normalizedRow.netrevenue1) ?? (grams ? grams * quotedRate : 0)
-        const gstAmount = toNumber(normalizedRow.gst1) ?? (netRevenue * 0.03)
-        const tcsAmount = toNumber(normalizedRow.tcs) ?? (netRevenue * 0.001)
-        const grossRevenue = toNumber(normalizedRow.grossrevenue) ?? (netRevenue + gstAmount + tcsAmount)
+        const symbolVal = toText(normalizedRow.symbol)
+        const purity = toText(normalizedRow.purity) ?? parsePurityFromSymbol(symbolVal)
+        const symbol = symbolVal
+        const quantitySold = toNumber(normalizedRow.quantitysold) ?? toNumber(normalizedRow.quantity)
+        const grams = toNumber(normalizedRow.grams) ?? toNumber(normalizedRow.gm)
+        const totalGross = toNumber(normalizedRow.grossrevenue) ?? toNumber(normalizedRow.total)
+        const pricePerGram = toNumber((normalizedRow as Record<string, unknown>)['1gmprice'])
+        const oPrice = toNumber(normalizedRow.oprice)
+        const quotedRateRaw = toNumber(normalizedRow.quotedrate)
+          ?? (pricePerGram ? pricePerGram * 10 : (oPrice && grams ? (oPrice * 10) / grams : null))
+        let netRevenue = toNumber(normalizedRow.netrevenue1)
+        let gstAmount = toNumber(normalizedRow.gst1)
+        let tcsAmount = toNumber(normalizedRow.tcs)
+        let grossRevenue = totalGross ?? null
+        let quotedRate = quotedRateRaw ?? 0
+        if (totalGross != null && totalGross > 0) {
+          gstAmount = gstAmount ?? Math.round(totalGross * (3 / 103) * 100) / 100
+          netRevenue = netRevenue ?? Math.round((totalGross - (gstAmount || 0)) * 100) / 100
+          grossRevenue = totalGross
+          tcsAmount = tcsAmount ?? Math.round((netRevenue ?? 0) * 0.001 * 100) / 100
+          if (grams && !quotedRateRaw && !pricePerGram) quotedRate = Math.round(((netRevenue ?? 0) / grams) * 10) / 10
+        } else if (netRevenue != null && grams) {
+          gstAmount = gstAmount ?? Math.round(netRevenue * 0.03 * 100) / 100
+          tcsAmount = tcsAmount ?? Math.round(netRevenue * 0.001 * 100) / 100
+          grossRevenue = grossRevenue ?? netRevenue + (gstAmount || 0) + (tcsAmount || 0)
+          if (!quotedRateRaw) quotedRate = Math.round((netRevenue / grams) * 10) / 10
+        } else if (grams && quotedRate) {
+          netRevenue = netRevenue ?? Math.round((grams * quotedRate / 10) * 100) / 100
+          gstAmount = gstAmount ?? Math.round(netRevenue * 0.03 * 100) / 100
+          tcsAmount = tcsAmount ?? Math.round(netRevenue * 0.001 * 100) / 100
+          grossRevenue = grossRevenue ?? netRevenue + gstAmount + tcsAmount
+        }
 
         if (!clientName || !orderDate || !grams) {
           skipped += 1
@@ -231,7 +309,7 @@ export default function ClientOrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      const { data, error } = await supabase.from('client_orders').select('*').order('created_at', { ascending: false })
+      const { data, error } = await withTimeout(supabase.from('client_orders').select('*').order('created_at', { ascending: false }))
       if (error) throw error
       setOrders(data || [])
     } catch (error) { console.error('Error fetching orders:', error) }
@@ -318,7 +396,7 @@ export default function ClientOrdersPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".xlsx,.xls"
+            accept=".xlsx,.xls,.html"
             className="hidden"
             onChange={handleFileUpload}
           />

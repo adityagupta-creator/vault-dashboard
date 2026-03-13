@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { Search, Download } from 'lucide-react'
 import type { ClientOrder, SupplierPurchase, Hedge } from '../types'
 
@@ -15,9 +16,9 @@ export default function TradeTrackingPage() {
   const fetchTrades = async () => {
     try {
       const [ordersRes, purchasesRes, hedgesRes] = await Promise.all([
-        supabase.from('client_orders').select('*').order('created_at', { ascending: false }),
-        supabase.from('supplier_purchases').select('*'),
-        supabase.from('hedges').select('*')
+        withTimeout(supabase.from('client_orders').select('*').order('created_at', { ascending: false })),
+        withTimeout(supabase.from('supplier_purchases').select('*')),
+        withTimeout(supabase.from('hedges').select('*'))
       ])
       const purchases = purchasesRes.data || []
       const hedges = hedgesRes.data || []

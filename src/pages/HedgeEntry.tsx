@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { Plus, Search, X } from 'lucide-react'
 import type { SupplierPurchase, Hedge } from '../types'
@@ -23,8 +24,8 @@ export default function HedgeEntryPage() {
   const fetchData = async () => {
     try {
       const [hedgesRes, purchasesRes] = await Promise.all([
-        supabase.from('hedges').select('*').order('created_at', { ascending: false }),
-        supabase.from('supplier_purchases').select('*').eq('supplier_status', 'confirmed')
+        withTimeout(supabase.from('hedges').select('*').order('created_at', { ascending: false })),
+        withTimeout(supabase.from('supplier_purchases').select('*').eq('supplier_status', 'confirmed'))
       ])
       setHedges(hedgesRes.data || [])
       setPurchases(purchasesRes.data || [])

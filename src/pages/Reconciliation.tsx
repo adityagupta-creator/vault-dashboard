@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { Search, Check, X } from 'lucide-react'
 import type { ClientOrder, Reconciliation } from '../types'
@@ -16,8 +17,8 @@ export default function ReconciliationPage() {
   const fetchData = async () => {
     try {
       const [reconRes, ordersRes] = await Promise.all([
-        supabase.from('reconciliations').select('*').order('created_at', { ascending: false }),
-        supabase.from('client_orders').select('*').in('trade_status', ['do_created', 'in_delivery', 'reconciliation_pending'])
+        withTimeout(supabase.from('reconciliations').select('*').order('created_at', { ascending: false })),
+        withTimeout(supabase.from('client_orders').select('*').in('trade_status', ['do_created', 'in_delivery', 'reconciliation_pending']))
       ])
       setReconciliations(reconRes.data || [])
       setOrders(ordersRes.data || [])

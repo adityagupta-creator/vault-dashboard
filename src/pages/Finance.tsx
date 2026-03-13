@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { Search, Check, X } from 'lucide-react'
 import type { ClientOrder, Payment } from '../types'
@@ -19,8 +20,8 @@ export default function FinancePage() {
   const fetchData = async () => {
     try {
       const [paymentsRes, ordersRes] = await Promise.all([
-        supabase.from('payments').select('*').order('created_at', { ascending: false }),
-        supabase.from('client_orders').select('*').eq('trade_status', 'pending_payment')
+        withTimeout(supabase.from('payments').select('*').order('created_at', { ascending: false })),
+        withTimeout(supabase.from('client_orders').select('*').eq('trade_status', 'pending_payment'))
       ])
       setPayments(paymentsRes.data || [])
       setOrders(ordersRes.data || [])

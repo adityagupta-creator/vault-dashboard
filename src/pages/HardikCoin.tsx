@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { Search, RefreshCw, Truck } from 'lucide-react'
 import { extractCity, salesPersonFor } from '../lib/hardikUtils'
 import type { ClientOrder, SupplierPurchase } from '../types'
@@ -55,8 +56,8 @@ export default function HardikCoinPage() {
     setLoading(true)
     try {
       const [ordersRes, purchasesRes] = await Promise.all([
-        supabase.from('client_orders').select('*').order('order_date', { ascending: false }).order('created_at', { ascending: false }),
-        supabase.from('supplier_purchases').select('*').order('created_at', { ascending: false }),
+        withTimeout(supabase.from('client_orders').select('*').order('order_date', { ascending: false }).order('created_at', { ascending: false })),
+        withTimeout(supabase.from('supplier_purchases').select('*').order('created_at', { ascending: false })),
       ])
       setOrders(ordersRes.data || [])
       setPurchases(purchasesRes.data || [])

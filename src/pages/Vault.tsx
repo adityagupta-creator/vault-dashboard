@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { Plus, Search, X } from 'lucide-react'
 import type { VaultLogistics } from '../types'
 
@@ -22,7 +23,7 @@ export default function VaultPage() {
   const fetchVaults = async () => {
     try {
       setError(null)
-      const { data, error: fetchError } = await supabase.from('vault_logistics').select('*').order('vault_name')
+      const { data, error: fetchError } = await withTimeout(supabase.from('vault_logistics').select('*').order('vault_name'))
       if (fetchError) throw fetchError
       setVaults(data || [])
     } catch (error) {

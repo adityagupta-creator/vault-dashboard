@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { Plus, Search, Check, X, FileSpreadsheet } from 'lucide-react'
 import type { ClientOrder, SupplierPurchase } from '../types'
@@ -21,8 +22,8 @@ export default function SupplierPurchasePage() {
   const fetchData = async () => {
     try {
       const [purchasesRes, ordersRes] = await Promise.all([
-        supabase.from('supplier_purchases').select('*').order('created_at', { ascending: false }),
-        supabase.from('client_orders').select('*').eq('trade_status', 'pending_supplier_booking')
+        withTimeout(supabase.from('supplier_purchases').select('*').order('created_at', { ascending: false })),
+        withTimeout(supabase.from('client_orders').select('*').eq('trade_status', 'pending_supplier_booking'))
       ])
       const ps = purchasesRes.data || []
       setPurchases(ps)
@@ -30,7 +31,7 @@ export default function SupplierPurchasePage() {
 
       const orderIds = [...new Set(ps.map((p) => p.client_order_id))]
       if (orderIds.length > 0) {
-        const { data } = await supabase.from('client_orders').select('*').in('id', orderIds)
+        const { data } = await withTimeout(supabase.from('client_orders').select('*').in('id', orderIds))
         const map: Record<string, ClientOrder> = {}
         ;(data || []).forEach((o) => { map[o.id] = o })
         setOrdersMap(map)

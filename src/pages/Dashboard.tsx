@@ -1,5 +1,6 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { AlertTriangle, Bell, BellRing, Loader2, X } from 'lucide-react'
 
 const CHECK_WINDOW_HOURS = 24 as const
@@ -37,11 +38,11 @@ export default function DashboardPage() {
         const label = storedLastSeen ? 'since your last check' : `in the last ${CHECK_WINDOW_HOURS} hours`
         if (isMounted) setWindowLabel(label)
 
-        const { count, error } = await supabase
+        const { count, error } = await withTimeout(supabase
           .from('client_orders')
           .select('id', { count: 'exact', head: true })
           .gte('created_at', since)
-          .ilike('remarks', 'Imported from sheet%')
+          .ilike('remarks', 'Imported from sheet%'))
 
         if (error) throw error
         const safeCount = count ?? 0

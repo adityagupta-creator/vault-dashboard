@@ -32,6 +32,18 @@ function App() {
   const { setUser, setLoading } = useAuthStore()
 
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!session) setUser(null)
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [setUser])
+
+  useEffect(() => {
     let isMounted = true
     let subscription: { unsubscribe: () => void } | null = null
 

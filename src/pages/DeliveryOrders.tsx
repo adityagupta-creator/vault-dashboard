@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { Plus, Search, FileText, Truck, X } from 'lucide-react'
 import type { ClientOrder, DeliveryOrder } from '../types'
@@ -19,8 +20,8 @@ export default function DeliveryOrdersPage() {
   const fetchData = async () => {
     try {
       const [deliveriesRes, ordersRes] = await Promise.all([
-        supabase.from('delivery_orders').select('*').order('created_at', { ascending: false }),
-        supabase.from('client_orders').select('*').eq('trade_status', 'payment_verified')
+        withTimeout(supabase.from('delivery_orders').select('*').order('created_at', { ascending: false })),
+        withTimeout(supabase.from('client_orders').select('*').eq('trade_status', 'payment_verified'))
       ])
       setDeliveries(deliveriesRes.data || [])
       setOrders(ordersRes.data || [])
