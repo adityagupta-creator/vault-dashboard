@@ -16,13 +16,13 @@
     @apply w-full max-w-[12rem] pl-7 pr-1.5 py-1 text-[10px] border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-amber-500;
   }
   .table-excel {
-    @apply w-full border-collapse text-[10px] table-fixed;
+    @apply w-full border-collapse text-[10px];
   }
   .table-excel th {
-    @apply px-1 py-0.5 text-left font-medium text-slate-600 uppercase bg-slate-100 border border-slate-200 truncate;
+    @apply px-1 py-0.5 text-left font-medium text-slate-600 uppercase bg-slate-100 border border-slate-200 whitespace-nowrap;
   }
   .table-excel td {
-    @apply px-1 py-0.5 border border-slate-200 truncate;
+    @apply px-1 py-0.5 border border-slate-200 whitespace-nowrap;
   }
   .table-excel tbody tr:hover {
     @apply bg-slate-50;
@@ -33,6 +33,6 @@
     width: 2.5rem;
   }
   .table-container {
-    @apply flex-1 min-h-0 overflow-x-hidden overflow-y-auto;
+    @apply flex-1 min-h-0 overflow-auto;
   }
 }

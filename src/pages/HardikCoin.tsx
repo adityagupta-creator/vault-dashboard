@@ -128,7 +128,7 @@ export default function HardikCoinPage() {
             <thead className="sticky top-0 z-10">
               <tr>
                 {COLS.map((h) => (
-                  <th key={h} className="px-1 py-0.5 text-left text-[10px] font-medium text-white uppercase truncate border border-slate-600">
+                  <th key={h} className="px-1 py-0.5 text-left text-[10px] font-medium text-white uppercase whitespace-nowrap border border-slate-600">
                     {h}
                   </th>
                 ))}
