@@ -16,15 +16,20 @@
     @apply w-full max-w-xs pl-8 pr-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-amber-500;
   }
   .table-excel {
-    @apply w-full border-collapse text-xs;
+    @apply w-full border-collapse text-[10px];
   }
   .table-excel th {
-    @apply px-2 py-1.5 text-left font-medium text-slate-600 uppercase whitespace-nowrap bg-slate-100 border border-slate-200;
+    @apply px-1.5 py-0.5 text-left font-medium text-slate-600 uppercase whitespace-nowrap bg-slate-100 border border-slate-200;
   }
   .table-excel td {
-    @apply px-2 py-1 border border-slate-200;
+    @apply px-1.5 py-0.5 border border-slate-200;
   }
   .table-excel tbody tr:hover {
     @apply bg-slate-50;
+  }
+  .table-excel th:first-child,
+  .table-excel td:first-child {
+    min-width: 2.5rem;
+    width: 2.5rem;
   }
 }

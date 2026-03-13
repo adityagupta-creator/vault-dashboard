@@ -442,7 +442,7 @@ export default function ClientOrdersPage() {
             <thead className="sticky top-0 z-10">
               <tr>
                 {['Sr.No', 'Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', ...dynamicKeys, 'Actions'].map((h, i) => (
-                  <th key={h} className={i <= 1 ? 'sticky left-0 z-20 bg-slate-100' : ''}>
+                  <th key={h} className={i === 0 ? 'sticky left-0 z-20 bg-slate-100 w-12 min-w-[2.5rem]' : i === 1 ? 'sticky left-12 z-20 bg-slate-100' : ''}>
                     {h}
                   </th>
                 ))}
