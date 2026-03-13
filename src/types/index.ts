@@ -36,7 +36,10 @@ export interface ClientOrder {
   created_by: string | null
   created_at: string
   updated_at: string
+  import_hash?: string
+  raw_data?: any
 }
+
 
 export interface SupplierPurchase {
   id: string

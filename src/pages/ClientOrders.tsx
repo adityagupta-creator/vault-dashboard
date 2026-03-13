@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { supabase } from '../api/supabase'
 import { useAuthStore } from '../store/auth'
 import { Plus, Search, Send, Upload, X } from 'lucide-react'
@@ -13,8 +13,9 @@ export default function ClientOrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [saving, setSaving] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [importSummary, setImportSummary] = useState<{ inserted: number; skipped: number; errors: string[]; fileName: string } | null>(null)
+  const [importSummary, setImportSummary] = useState<{ inserted: number; skipped: number; errors: string[]; fileName: string; duplicates?: number } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  const [highlightedHashes, setHighlightedHashes] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [formData, setFormData] = useState({
@@ -126,7 +127,8 @@ export default function ClientOrdersPage() {
       const errors: string[] = []
       let skipped = 0
 
-      rows.forEach((row, index) => {
+      for (let index = 0; index < rows.length; index++) {
+        const row = rows[index]
         const normalizedRow: Record<string, unknown> = {}
         Object.entries(row).forEach(([key, value]) => {
           normalizedRow[normalizeKey(key)] = value
@@ -149,8 +151,14 @@ export default function ClientOrdersPage() {
         if (!clientName || !orderDate || !grams) {
           skipped += 1
           errors.push(`Row ${index + 2}: missing client name, order date, or grams.`)
-          return
+          continue
         }
+
+        const encoder = new TextEncoder()
+        const data = encoder.encode(JSON.stringify(row))
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+        const hashArray = Array.from(new Uint8Array(hashBuffer))
+        const importHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 
         payloads.push({
           client_name: clientName,
@@ -173,17 +181,46 @@ export default function ClientOrdersPage() {
           trade_status: 'pending_supplier_booking',
           remarks: `Imported from sheet: ${file.name}`,
           created_by: user?.id || null,
+          import_hash: importHash,
+          raw_data: row
         })
-      })
+      }
 
       if (!payloads.length) {
         throw new Error('No valid rows found to import. Please check the sheet formatting.')
       }
 
-      await insertOrdersInChunks(payloads)
-      await fetchOrders()
-      await sendOrderNotification(payloads.length, file.name)
-      setImportSummary({ inserted: payloads.length, skipped, errors, fileName: file.name })
+      const existingHashes = new Set<string>()
+      for (let i = 0; i < payloads.length; i += 200) {
+        const chunk = payloads.slice(i, i + 200)
+        const hashes = chunk.map(p => p.import_hash)
+        const { data } = await supabase.from('client_orders').select('import_hash').in('import_hash', hashes)
+        data?.forEach((d: any) => existingHashes.add(d.import_hash))
+      }
+
+      const newPayloads: any[] = []
+      const seenLocally = new Set<string>()
+
+      for (const p of payloads) {
+        if (!existingHashes.has(p.import_hash) && !seenLocally.has(p.import_hash)) {
+          seenLocally.add(p.import_hash)
+          newPayloads.push(p)
+        }
+      }
+
+      const duplicateCount = payloads.length - newPayloads.length
+
+      if (newPayloads.length > 0) {
+        await insertOrdersInChunks(newPayloads)
+        setHighlightedHashes(new Set(newPayloads.map(p => p.import_hash)))
+        await fetchOrders()
+        await sendOrderNotification(newPayloads.length, file.name)
+      } else {
+        setHighlightedHashes(new Set())
+        await fetchOrders() // just to refresh in case things changed
+      }
+
+      setImportSummary({ inserted: newPayloads.length, skipped, errors, fileName: file.name, duplicates: duplicateCount })
     } catch (error) {
       setImportError((error as Error).message)
     } finally {
@@ -244,6 +281,18 @@ export default function ClientOrdersPage() {
     order.order_number?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const dynamicKeys = useMemo(() => {
+    const keys = new Set<string>()
+    filteredOrders.forEach(order => {
+      // @ts-ignore
+      if (order.raw_data && typeof order.raw_data === 'object') {
+        // @ts-ignore
+        Object.keys(order.raw_data).forEach(k => keys.add(k))
+      }
+    })
+    return Array.from(keys)
+  }, [filteredOrders])
+
   const statusColors: Record<string, string> = {
     pending_supplier_booking: 'bg-yellow-100 text-yellow-800',
     pending_hedge: 'bg-blue-100 text-blue-800',
@@ -301,7 +350,8 @@ export default function ClientOrdersPage() {
 
       {importSummary && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 space-y-1">
-          <p className="font-medium">Imported {importSummary.inserted} orders from {importSummary.fileName}.</p>
+          <p className="font-medium">Imported {importSummary.inserted} new orders from {importSummary.fileName}.</p>
+          {(importSummary.duplicates ?? 0) > 0 && <p className="text-amber-700">Skipped {importSummary.duplicates} duplicate orders.</p>}
           {importSummary.skipped > 0 && <p>Skipped {importSummary.skipped} rows with missing data.</p>}
           {importSummary.errors.slice(0, 3).map((message, idx) => (
             <p key={`${message}-${idx}`}>{message}</p>
@@ -314,14 +364,14 @@ export default function ClientOrdersPage() {
           <table className="w-full">
             <thead className="bg-slate-50">
               <tr>
-                {['Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{h}</th>
+                {['Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', ...dynamicKeys, 'Actions'].map(h => (
+                  <th key={h} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-slate-50">
+                <tr key={order.id} className={`transition-colors ${order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
                   <td className="px-6 py-4 text-sm text-slate-900">{order.order_number || '-'}</td>
                   <td className="px-6 py-4">
                     <p className="text-sm font-medium text-slate-900">{order.client_name}</p>
@@ -338,11 +388,17 @@ export default function ClientOrdersPage() {
                   </td>
                   <td className="px-6 py-4">
                     {order.trade_status === 'pending_supplier_booking' && (
-                      <button onClick={() => sendToSupplier(order.id)} className="inline-flex items-center px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors">
+                      <button onClick={() => sendToSupplier(order.id)} className="inline-flex items-center px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors whitespace-nowrap">
                         <Send className="w-3 h-3 mr-1" />Send to Supplier
                       </button>
                     )}
                   </td>
+                  {dynamicKeys.map(key => (
+                    <td key={key} className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                      {/* @ts-ignore */}
+                      {order.raw_data?.[key] !== undefined ? String(order.raw_data[key]) : '-'}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
