@@ -68,19 +68,20 @@ serve(async (req) => {
     }
 
     const from = Deno.env.get('ORDER_NOTIFY_FROM') ?? 'SafeGold Orders <onboarding@resend.dev>'
-    const subject = `New client orders imported (${count})`
+    const action = source === 'sheet' ? 'imported' : 'added'
+    const subject = `New client orders ${action} (${count})`
     const text = [
-      `New client orders were imported from a ${source}.`,
+      `New client orders were ${action} via ${source}.`,
       `Count: ${count}`,
-      `File: ${fileName}`,
+      `Details: ${fileName}`,
     ].join('\n')
 
     const html = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-        <h2 style="margin: 0 0 12px;">New client orders imported</h2>
+        <h2 style="margin: 0 0 12px;">New client orders ${action}</h2>
         <p style="margin: 0 0 8px;">Source: ${source}</p>
         <p style="margin: 0 0 8px;">Count: <strong>${count}</strong></p>
-        <p style="margin: 0;">File: ${fileName}</p>
+        <p style="margin: 0;">Details: ${fileName}</p>
       </div>
     `
 

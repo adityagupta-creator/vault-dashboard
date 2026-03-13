@@ -92,13 +92,13 @@ export default function ClientOrdersPage() {
     }
   }
 
-  const sendOrderNotification = async (count: number, fileName: string) => {
+  const sendOrderNotification = async (count: number, fileName: string, source: string = 'sheet') => {
     const recipient = import.meta.env.VITE_MEGHNA_EMAIL || 'aditya.gupta@safegold.in'
     if (!recipient) return
     const functionName = import.meta.env.VITE_ORDER_NOTIFY_FUNCTION || 'notify-new-orders'
     try {
       await supabase.functions.invoke(functionName, {
-        body: { recipient, count, fileName, source: 'sheet' },
+        body: { recipient, count, fileName, source },
       })
     } catch (error) {
       console.error('Error sending order notification:', error)
@@ -227,6 +227,7 @@ export default function ClientOrdersPage() {
       setShowModal(false)
       setFormData({ client_name: '', company_name: '', order_date: new Date().toISOString().split('T')[0], delivery_date: '', product_symbol: '', purity: '', grams: '', quantity: '', quoted_rate: '', making_charges: '0', order_source: 'offline', city: '', remarks: '' })
       fetchOrders()
+      sendOrderNotification(1, `Client: ${formData.client_name}, Product: ${formData.product_symbol || '-'} (${grams}g)`, 'manual entry')
     } catch (error) { console.error('Error creating order:', error); alert('Failed to create order') }
     finally { setSaving(false) }
   }
