@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
@@ -14,6 +14,23 @@ export default function ClientOrdersPage() {
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [saving, setSaving] = useState(false)
+  const readHighlightedIds = useCallback((): Set<string> => {
+    try {
+      const stored = localStorage.getItem('hardik-latest-import-ids')
+      return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
+    } catch { return new Set() }
+  }, [])
+  const [highlightedIds, setHighlightedIds] = useState<Set<string>>(readHighlightedIds)
+
+  useEffect(() => {
+    const sync = () => setHighlightedIds(readHighlightedIds())
+    window.addEventListener('storage', sync)
+    window.addEventListener('focus', sync)
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener('focus', sync)
+    }
+  }, [readHighlightedIds])
 
   const [formData, setFormData] = useState({
     client_name: '', company_name: '',
@@ -169,7 +186,7 @@ export default function ClientOrdersPage() {
               {filteredOrders.map((order, idx) => {
                 const nr = order.net_revenue ?? 0
                 return (
-                <tr key={order.id}>
+                <tr key={order.id} className={highlightedIds.has(order.id) ? 'bg-amber-100' : ''}>
                   <td className="text-slate-600 text-center w-12 whitespace-nowrap">{idx + 1}</td>
                   <td className="text-slate-900 whitespace-nowrap">{formatDate(order.order_date)}</td>
                   <td className="text-slate-600 whitespace-nowrap">{order.order_time || ''}</td>
