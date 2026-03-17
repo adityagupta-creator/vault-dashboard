@@ -24,7 +24,8 @@ CREATE POLICY "Authenticated users can update app_settings"
 INSERT INTO app_settings (key, value) VALUES
   ('hardik_custom_columns', '[]'::jsonb),
   ('hardik_row_order', '[]'::jsonb),
-  ('hardik_latest_import_ids', '[]'::jsonb)
+  ('hardik_latest_import_ids', '[]'::jsonb),
+  ('notification_emails', '[]'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
 -- Enable Supabase Realtime on all shared tables

@@ -9,6 +9,7 @@ import DashboardPage from './pages/Dashboard'
 import ClientOrdersPage from './pages/ClientOrders'
 import HardikCoinPage from './pages/HardikCoin'
 import VaultPage from './pages/Vault'
+import SettingsPage from './pages/Settings'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuthStore()
@@ -87,6 +88,7 @@ function App() {
           <Route path="client-orders" element={<ClientOrdersPage />} />
           <Route path="hardik-coin" element={<HardikCoinPage />} />
           <Route path="vault" element={<VaultPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

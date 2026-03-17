@@ -8,6 +8,7 @@ const corsHeaders = {
 
 type NotifyPayload = {
   recipient?: string
+  recipients?: string[]
   count?: number
   fileName?: string
   source?: string
@@ -41,13 +42,23 @@ serve(async (req) => {
 
     const body = (await req.json()) as NotifyPayload
     const configuredRecipient = Deno.env.get('ORDER_NOTIFY_RECIPIENT') ?? ''
-    const recipient = configuredRecipient || body.recipient
+    const toList: string[] = []
+    if (configuredRecipient) toList.push(configuredRecipient)
+    if (Array.isArray(body.recipients)) {
+      for (const r of body.recipients) {
+        const trimmed = String(r).trim().toLowerCase()
+        if (trimmed && !toList.includes(trimmed)) toList.push(trimmed)
+      }
+    }
+    if (body.recipient && !toList.includes(body.recipient)) {
+      toList.push(body.recipient)
+    }
     const count = Number(body.count ?? 0)
     const fileName = body.fileName ?? 'uploaded sheet'
     const source = body.source ?? 'sheet'
 
-    if (!recipient) {
-      return new Response(JSON.stringify({ error: 'Recipient email is required.' }), {
+    if (toList.length === 0) {
+      return new Response(JSON.stringify({ error: 'No recipient emails provided.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -94,7 +105,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from,
-        to: [recipient],
+        to: toList,
         subject,
         text,
         html,

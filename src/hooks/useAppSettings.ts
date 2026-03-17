@@ -76,3 +76,32 @@ export function useLatestImportIds() {
 
   return [idSet, setIds, loading] as const
 }
+
+/**
+ * Cloud-backed notification email recipients.
+ * Returns [emails, { addEmail, removeEmail }, loading]
+ */
+export function useNotificationEmails() {
+  const [emails, setEmails, loading] = useAppSetting<string[]>(
+    'notification_emails',
+    []
+  )
+
+  const addEmail = useCallback(
+    async (email: string) => {
+      const trimmed = email.trim().toLowerCase()
+      if (!trimmed || emails.includes(trimmed)) return
+      await setEmails([...emails, trimmed])
+    },
+    [emails, setEmails]
+  )
+
+  const removeEmail = useCallback(
+    async (email: string) => {
+      await setEmails(emails.filter((e) => e !== email))
+    },
+    [emails, setEmails]
+  )
+
+  return [emails, { addEmail, removeEmail, setEmails }, loading] as const
+}

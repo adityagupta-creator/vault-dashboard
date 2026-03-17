@@ -183,6 +183,24 @@ export default function HardikCoinPage() {
     tcs_amount: '0', city: '',
   })
 
+  const sendOrderNotifications = useCallback(async (count: number, detail: string, source: string) => {
+    try {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'notification_emails')
+        .maybeSingle()
+      const emails: string[] = Array.isArray(data?.value) ? data.value : []
+      if (emails.length === 0) return
+      const functionName = import.meta.env.VITE_ORDER_NOTIFY_FUNCTION || 'notify-new-orders'
+      await supabase.functions.invoke(functionName, {
+        body: { recipients: emails, count, fileName: detail, source },
+      })
+    } catch (err) {
+      console.error('Error sending order notifications:', err)
+    }
+  }, [])
+
   const handleNewOrderSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setNewOrderSaving(true)
@@ -214,13 +232,14 @@ export default function HardikCoinPage() {
       if (error) throw error
       setShowNewOrderModal(false)
       resetNewOrderForm()
+      sendOrderNotifications(1, `${newOrderForm.client_name} - ${newOrderForm.product_symbol || 'N/A'} (${grams}g)`, 'manual entry')
     } catch (err) {
       console.error('Error creating order:', err)
       alert('Failed to create order')
     } finally {
       setNewOrderSaving(false)
     }
-  }, [newOrderForm, user?.id])
+  }, [newOrderForm, user?.id, sendOrderNotifications])
 
   const fetchData = useCallback(async () => {
     await Promise.all([refetchOrders(), refetchPurchases()])
@@ -289,6 +308,7 @@ export default function HardikCoinPage() {
         await fetchData()
         setImportSuccess(true)
         setTimeout(() => setImportSuccess(false), 4000)
+        sendOrderNotifications(toInsert.length, file.name, 'sheet import')
       } catch (err) {
         setImportError((err as Error).message)
       } finally {
@@ -296,7 +316,7 @@ export default function HardikCoinPage() {
         event.target.value = ''
       }
     },
-    [user?.id, fetchData, insertOrdersInChunks, setHighlightedImportIds]
+    [user?.id, fetchData, insertOrdersInChunks, setHighlightedImportIds, sendOrderNotifications]
   )
 
   useEffect(() => {

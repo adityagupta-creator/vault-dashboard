@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { 
   LayoutDashboard, ShoppingCart, Archive, FileSpreadsheet,
-  LogOut, Menu, X, PanelLeftClose, PanelLeftOpen
+  LogOut, Menu, X, PanelLeftClose, PanelLeftOpen, Settings
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -11,6 +11,7 @@ const navigation = [
   { name: 'Hardik Coin', href: '/hardik-coin', icon: FileSpreadsheet },
   { name: 'Meghna - Client Orders', href: '/client-orders', icon: ShoppingCart },
   { name: 'Vault Inventory', href: '/vault', icon: Archive },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export default function MainLayout() {
