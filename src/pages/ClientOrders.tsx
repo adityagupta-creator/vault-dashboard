@@ -373,7 +373,7 @@ export default function ClientOrdersPage() {
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Client Orders')
+    XLSX.utils.book_append_sheet(wb, ws, 'Meghna - Client Orders')
     const filename = `ClientOrders_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.xlsx`
     XLSX.writeFile(wb, filename)
   }
@@ -384,7 +384,7 @@ export default function ClientOrdersPage() {
     <div className="page-excel space-y-1">
       <div className="page-excel-header flex-shrink-0">
         <div className="flex items-center gap-2">
-          <h1 className="page-excel-title">Client Orders</h1>
+          <h1 className="page-excel-title">Meghna - Client Orders</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -498,7 +498,7 @@ export default function ClientOrdersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-semibold text-slate-900">New Client Order</h2>
+              <h2 className="text-xl font-semibold text-slate-900">New Meghna - Client Order</h2>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
