@@ -152,17 +152,19 @@ export function parseSheetBuffer(buffer: ArrayBuffer): Record<string, unknown>[]
 
 /**
  * Validate that first row has at least some required-like columns (normalized).
+ * Accepts a combined date+time in the "Time" column if no separate "Date" column.
  */
 export function validateRequiredColumns(firstRow: Record<string, unknown>): { valid: boolean; message?: string } {
   const keys = new Set(Object.keys(firstRow).map(normalizeKey))
   const hasDate = keys.has('date')
   const hasTime = keys.has('time')
+  const hasDateOrTime = hasDate || hasTime
   const hasParty = keys.has('partyname') || keys.has('namefirm')
   const hasQtyOrGrams = keys.has('quantity') || keys.has('quantitysold') || keys.has('grams') || keys.has('gm')
-  if (!hasDate || !hasTime || !hasParty || !hasQtyOrGrams) {
+  if (!hasDateOrTime || !hasParty || !hasQtyOrGrams) {
     return {
       valid: false,
-      message: 'Invalid format. Required columns: Date, Time, Party Name (or Name/Firm), and Quantity/Grams.',
+      message: 'Invalid format. Required columns: Date (or Time with date), Party Name (or Name/Firm), and Quantity/Grams.',
     }
   }
   return { valid: true }
