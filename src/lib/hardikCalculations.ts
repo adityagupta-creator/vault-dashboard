@@ -61,15 +61,15 @@ export function recalcSales(order: ClientOrder): Partial<ClientOrder> {
 /**
  * Purchase: Matches Python F1_FORMULAS exactly.
  * Net Purchase_2 = Quantity Bought * (Trade Booked + Making Charges)
- * N = Quantity Bought = Quantity Sold; O = Trade Booked; P = Making Charges
- * (Trade Booked and Making Charges are per quantity unit in the formula)
+ * N = Quantity Bought = Grams (matches sheet); O = Trade Booked; P = Making Charges
+ * (Trade Booked and Making Charges are per gram in the formula)
  */
 export function recalcPurchase(
   order: ClientOrder,
   purchase: SupplierPurchase | Partial<SupplierPurchase> | null
 ): Partial<SupplierPurchase> | null {
   if (!purchase) return null
-  const quantityBought = toNum(order.quantity) || toNum(order.grams) || 1
+  const quantityBought = toNum(order.grams) || toNum(order.quantity) || 1
   const tradeBooked = toNum((purchase as SupplierPurchase).supplier_rate ?? 0)
   const makingCharges = toNum((purchase as SupplierPurchase).supplier_making_charges ?? 0)
 
