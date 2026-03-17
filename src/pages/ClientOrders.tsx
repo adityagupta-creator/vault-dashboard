@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
-import { formatDate } from '../lib/hardikUtils'
+import { formatDate, formatRupee } from '../lib/hardikUtils'
 import { Download, Plus, Search, X } from 'lucide-react'
 import type { ClientOrder } from '../types'
 import * as XLSX from 'xlsx'
@@ -179,11 +179,11 @@ export default function ClientOrdersPage() {
                   <td className="text-slate-600">{order.product_symbol ?? '-'}</td>
                   <td className="text-slate-900 text-right">{order.quantity ?? 1}</td>
                   <td className="text-slate-900 text-right">{order.grams}g</td>
-                  <td className="text-slate-900 text-right min-w-[5.5rem]">₹{order.quoted_rate?.toLocaleString() ?? '-'}</td>
-                  <td className="text-slate-900 text-right min-w-[5.5rem]">₹{nr ? nr.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</td>
-                  <td className="text-slate-600 text-right min-w-[5.5rem]">₹{order.gst_amount?.toLocaleString() ?? '-'}</td>
-                  <td className="text-slate-600 text-right min-w-[5.5rem]">₹{order.tcs_amount?.toLocaleString() ?? '-'}</td>
-                  <td className="text-slate-900 text-right min-w-[9rem] whitespace-nowrap">₹{order.gross_revenue?.toLocaleString() ?? '-'}</td>
+                  <td className="text-slate-900 text-right min-w-[5.5rem]">₹{formatRupee(order.quoted_rate) || '-'}</td>
+                  <td className="text-slate-900 text-right min-w-[5.5rem]">₹{nr ? formatRupee(nr, 2) : '-'}</td>
+                  <td className="text-slate-600 text-right min-w-[5.5rem]">₹{formatRupee(order.gst_amount) || '-'}</td>
+                  <td className="text-slate-600 text-right min-w-[5.5rem]">₹{formatRupee(order.tcs_amount) || '-'}</td>
+                  <td className="text-slate-900 text-right min-w-[9rem] whitespace-nowrap">₹{formatRupee(order.gross_revenue) || '-'}</td>
                 </tr>
               )})}
             </tbody>

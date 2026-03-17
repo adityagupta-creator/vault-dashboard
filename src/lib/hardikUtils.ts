@@ -58,3 +58,13 @@ export function formatDate(d: string | null | undefined): string {
   const year = date.getFullYear()
   return `${day}.${month}.${year}`
 }
+
+/** Format number in Indian style (e.g. 12,30,300) for ₹ values */
+export function formatRupee(n: number | null | undefined, decimals?: number): string {
+  if (n == null || Number.isNaN(n)) return ''
+  const opts =
+    decimals != null
+      ? { minimumFractionDigits: decimals, maximumFractionDigits: decimals }
+      : {}
+  return n.toLocaleString('en-IN', opts)
+}

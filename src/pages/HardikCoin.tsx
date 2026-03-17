@@ -9,7 +9,7 @@ import {
   buildOrderPayloads,
   compositeKey as toCompositeKey,
 } from '../lib/sheetImport'
-import { extractCity, salesPersonFor } from '../lib/hardikUtils'
+import { extractCity, salesPersonFor, formatRupee } from '../lib/hardikUtils'
 import { recalcRow } from '../lib/hardikCalculations'
 import {
   getCustomColumns,
@@ -883,34 +883,34 @@ export default function HardikCoinPage() {
         case 'grams':
           return `${order.grams}g`
         case 'quoted_rate':
-          return order.quoted_rate != null ? `₹${order.quoted_rate.toLocaleString()}` : '-'
+          return order.quoted_rate != null ? `₹${formatRupee(order.quoted_rate)}` : '-'
         case 'net_revenue':
-          return order.net_revenue != null ? `₹${order.net_revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'
+          return order.net_revenue != null ? `₹${formatRupee(order.net_revenue, 2)}` : '-'
         case 'gst_amount':
-          return order.gst_amount != null ? `₹${order.gst_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'
+          return order.gst_amount != null ? `₹${formatRupee(order.gst_amount, 2)}` : '-'
         case 'tcs_amount':
-          return order.tcs_amount != null ? `₹${order.tcs_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'
+          return order.tcs_amount != null ? `₹${formatRupee(order.tcs_amount, 2)}` : '-'
         case 'gross_revenue':
-          return order.gross_revenue != null ? `₹${order.gross_revenue.toLocaleString()}` : '-'
+          return order.gross_revenue != null ? `₹${formatRupee(order.gross_revenue)}` : '-'
         case 'quantity_bought':
           return `${order.grams ?? order.quantity ?? 0}g`
         case 'trade_booked':
-          return purchase ? `₹${(purchase.supplier_rate ?? 0).toLocaleString()}/10g` : 'Click to add'
+          return purchase ? `₹${formatRupee(purchase.supplier_rate ?? 0)}/10g` : 'Click to add'
         case 'making_charges':
-          return purchase ? `₹${(purchase.supplier_making_charges ?? 0).toLocaleString()}` : 'Click to add'
+          return purchase ? `₹${formatRupee(purchase.supplier_making_charges ?? 0)}` : 'Click to add'
         case 'net_purchase':
-          return purchase?.net_purchase != null ? `₹${purchase.net_purchase.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'
+          return purchase?.net_purchase != null ? `₹${formatRupee(purchase.net_purchase, 2)}` : '-'
         case 'gst_2':
-          return purchase?.gst_2 != null ? `₹${purchase.gst_2.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'
+          return purchase?.gst_2 != null ? `₹${formatRupee(purchase.gst_2, 2)}` : '-'
         case 'gross_purchase':
-          return purchase?.gross_purchase != null ? `₹${purchase.gross_purchase.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'
+          return purchase?.gross_purchase != null ? `₹${formatRupee(purchase.gross_purchase, 2)}` : '-'
         case 'supplier_name':
           return purchase?.supplier_name ?? 'Click to add'
         case 'trade_margin': {
           const nr = order.net_revenue ?? 0
           const np = purchase?.net_purchase ?? 0
           const m = nr && np ? nr - np : null
-          return m != null ? `₹${m.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'
+          return m != null ? `₹${formatRupee(m, 2)}` : '-'
         }
         case 'trade_margin_pct': {
           const nr = order.net_revenue ?? 0
