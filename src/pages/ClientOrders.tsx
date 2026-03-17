@@ -495,7 +495,7 @@ export default function ClientOrdersPage() {
             <thead className="sticky top-0 z-10">
               <tr>
                 {['Sr.No', 'Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', ...dynamicKeys, 'Actions'].map((h, i) => (
-                  <th key={h} className={i === 0 ? 'sticky left-0 z-20 bg-slate-100' : i === 1 ? 'sticky left-[2.5rem] z-20 bg-slate-100' : ''}>
+                  <th key={h} className={i === 0 ? 'sticky left-0 z-20 bg-slate-100 w-10 min-w-[2.5rem] shrink-0' : i === 1 ? 'sticky left-10 z-20 bg-slate-100 min-w-[6rem] shrink-0' : ''}>
                     {h}
                   </th>
                 ))}
@@ -504,8 +504,8 @@ export default function ClientOrdersPage() {
             <tbody>
               {filteredOrders.map((order, idx) => (
                 <tr key={order.id} className={order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : ''}>
-                  <td className="text-slate-600 text-center sticky left-0 z-10 bg-inherit">{idx + 1}</td>
-                  <td className="text-slate-900 sticky left-[2.5rem] z-10 bg-inherit border-l border-slate-200">{order.order_number || '-'}</td>
+                  <td className={`text-slate-600 text-center sticky left-0 z-10 w-10 min-w-[2.5rem] shrink-0 ${order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : 'bg-white'}`}>{idx + 1}</td>
+                  <td className={`text-slate-900 sticky left-10 z-10 border-l border-slate-200 min-w-[6rem] shrink-0 ${order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : 'bg-white'}`}>{order.order_number || '-'}</td>
                   <td className="text-slate-900">
                     <span className="font-medium">{order.client_name}</span>
                     {order.company_name && <span className="text-slate-500 block">{order.company_name}</span>}
