@@ -1,8 +1,14 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
-import { Search, RefreshCw, Plus, Trash2, MoreVertical, Columns, Download } from 'lucide-react'
+import { Search, RefreshCw, Plus, Trash2, MoreVertical, Columns, Download, Upload } from 'lucide-react'
+import {
+  parseSheetBuffer,
+  validateRequiredColumns,
+  buildOrderPayloads,
+  compositeKey as toCompositeKey,
+} from '../lib/sheetImport'
 import { extractCity, salesPersonFor } from '../lib/hardikUtils'
 import { recalcRow } from '../lib/hardikCalculations'
 import {
@@ -147,6 +153,11 @@ export default function HardikCoinPage() {
   const [renameColName, setRenameColName] = useState('')
   const [colContextMenu, setColContextMenu] = useState<{ col: HardikCustomColumn; x: number; y: number } | null>(null)
   const [rowOrder, setRowOrderState] = useState<string[]>(() => getRowOrder())
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [importSuccess, setImportSuccess] = useState(false)
+  const [highlightedNewOrderIds, setHighlightedNewOrderIds] = useState<Set<string>>(new Set())
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const persistRowOrder = useCallback((ids: string[]) => {
     setRowOrder(ids)
@@ -172,6 +183,79 @@ export default function HardikCoinPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  const insertOrdersInChunks = useCallback(async (payloads: Record<string, unknown>[]) => {
+    const chunkSize = 200
+    const insertedIds: string[] = []
+    for (let i = 0; i < payloads.length; i += chunkSize) {
+      const chunk = payloads.slice(i, i + chunkSize)
+      const { data, error } = await supabase.from('client_orders').insert(chunk).select('id')
+      if (error) throw error
+      if (data) data.forEach((r: { id: string }) => insertedIds.push(r.id))
+    }
+    return insertedIds
+  }, [])
+
+  const handleFileUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      if (!file) return
+      setImporting(true)
+      setImportError(null)
+      setImportSuccess(false)
+      try {
+        const buffer = await file.arrayBuffer()
+        const rows = parseSheetBuffer(buffer)
+        if (!rows.length) {
+          setImportError('The uploaded file is empty.')
+          return
+        }
+        const validation = validateRequiredColumns(rows[0])
+        if (!validation.valid) {
+          setImportError(validation.message ?? 'Invalid file format.')
+          return
+        }
+        const { payloads, errors, skipped } = await buildOrderPayloads(rows, {
+          userId: user?.id ?? null,
+          fileName: file.name,
+        })
+        if (!payloads.length) {
+          setImportError('No valid rows to import. Please check Date, Time, Party Name, and Quantity/Grams.')
+          return
+        }
+        const { data: existingOrders } = await withTimeout(
+          supabase.from('client_orders').select('order_date, order_time, client_name')
+        )
+        const existingKeys = new Set(
+          (existingOrders ?? []).map((o: { order_date: string; order_time: string | null; client_name: string }) =>
+            toCompositeKey(o.order_date, o.order_time, o.client_name)
+          )
+        )
+        const seenInFile = new Set<string>()
+        const toInsert: Record<string, unknown>[] = []
+        for (const { payload, compositeKey: key } of payloads) {
+          if (existingKeys.has(key) || seenInFile.has(key)) continue
+          seenInFile.add(key)
+          toInsert.push(payload)
+        }
+        if (toInsert.length === 0) {
+          setImportError('All rows are duplicates (matching Date + Time + Party Name). No new records added.')
+          return
+        }
+        const insertedIds = await insertOrdersInChunks(toInsert)
+        setHighlightedNewOrderIds(new Set(insertedIds))
+        await fetchData()
+        setImportSuccess(true)
+        setTimeout(() => setImportSuccess(false), 4000)
+      } catch (err) {
+        setImportError((err as Error).message)
+      } finally {
+        setImporting(false)
+        event.target.value = ''
+      }
+    },
+    [user?.id, fetchData, insertOrdersInChunks]
+  )
 
   useEffect(() => {
     const dbIds = orders.map((o) => o.id)
@@ -903,6 +987,22 @@ export default function HardikCoinPage() {
       <div className="page-excel-header flex-shrink-0">
         <h1 className="page-excel-title">Hardik Coin</h1>
         <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors disabled:opacity-60"
+          >
+            <Upload className="w-4 h-4 mr-1" />
+            {importing ? 'Importing...' : 'Import'}
+          </button>
           <button
             onClick={() => setAddColModal(true)}
             className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors"
@@ -934,6 +1034,16 @@ export default function HardikCoinPage() {
           className="page-excel-search"
         />
       </div>
+      {importError && (
+        <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700 flex-shrink-0">
+          {importError}
+        </div>
+      )}
+      {importSuccess && (
+        <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-700 flex-shrink-0">
+          File imported successfully.
+        </div>
+      )}
       <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col">
         <div className="table-container">
           <table className="table-excel w-full [&_thead_th]:bg-[#1F4E79] [&_thead_th]:text-white [&_thead_th]:border-slate-600">
@@ -967,7 +1077,12 @@ export default function HardikCoinPage() {
             </thead>
             <tbody>
               {filtered.map((row, idx) => (
-                <tr key={row.order.id}>{allCols.map((col) => renderCell(col, row, idx))}</tr>
+                <tr
+                  key={row.order.id}
+                  className={highlightedNewOrderIds.has(row.order.id) ? 'bg-amber-100' : ''}
+                >
+                  {allCols.map((col) => renderCell(col, row, idx))}
+                </tr>
               ))}
             </tbody>
           </table>

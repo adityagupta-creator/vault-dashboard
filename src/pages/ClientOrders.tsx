@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { formatDate } from '../lib/hardikUtils'
-import { Download, Plus, Search, Upload, X } from 'lucide-react'
+import { Download, Plus, Search, X } from 'lucide-react'
 import type { ClientOrder } from '../types'
 import * as XLSX from 'xlsx'
 
@@ -14,11 +14,6 @@ export default function ClientOrdersPage() {
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [saving, setSaving] = useState(false)
-  const [importing, setImporting] = useState(false)
-  const [importSummary, setImportSummary] = useState<{ inserted: number; skipped: number; errors: string[]; fileName: string; duplicates?: number } | null>(null)
-  const [importError, setImportError] = useState<string | null>(null)
-  const [highlightedHashes, setHighlightedHashes] = useState<Set<string>>(new Set())
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [formData, setFormData] = useState({
     client_name: '', company_name: '',
@@ -30,99 +25,6 @@ export default function ClientOrdersPage() {
 
   useEffect(() => { fetchOrders() }, [])
 
-  const normalizeKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
-
-  const toNumber = (value: unknown) => {
-    if (value === null || value === undefined || value === '') return null
-    if (typeof value === 'number' && !Number.isNaN(value)) return value
-    const cleaned = String(value).replace(/,/g, '').trim()
-    if (!cleaned) return null
-    const parsed = Number(cleaned)
-    return Number.isNaN(parsed) ? null : parsed
-  }
-
-  const toText = (value: unknown) => {
-    if (value === null || value === undefined) return null
-    const text = String(value).trim()
-    return text.length ? text : null
-  }
-
-  const toIsoDate = (value: unknown) => {
-    if (value === null || value === undefined || value === '') return null
-    if (value instanceof Date) return value.toISOString().split('T')[0]
-    if (typeof value === 'number') {
-      const parsed = XLSX.SSF.parse_date_code(value)
-      if (parsed) {
-        const year = String(parsed.y).padStart(4, '0')
-        const month = String(parsed.m).padStart(2, '0')
-        const day = String(parsed.d).padStart(2, '0')
-        return `${year}-${month}-${day}`
-      }
-    }
-    const text = String(value).trim()
-    if (!text) return null
-    const match = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/)
-    if (match) {
-      const [, day, month, yearRaw] = match
-      const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-    }
-    const parsedDate = new Date(text)
-    return Number.isNaN(parsedDate.valueOf()) ? null : parsedDate.toISOString().split('T')[0]
-  }
-
-  const toTimeString = (value: unknown) => {
-    if (value === null || value === undefined || value === '') return null
-    if (value instanceof Date) return value.toTimeString().slice(0, 8)
-    if (typeof value === 'number' && value >= 0 && value < 1) {
-      const totalSeconds = Math.round(value * 24 * 60 * 60)
-      const hours = String(Math.floor(totalSeconds / 3600) % 24).padStart(2, '0')
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
-      const seconds = String(totalSeconds % 60).padStart(2, '0')
-      return `${hours}:${minutes}:${seconds}`
-    }
-    const text = String(value).trim()
-    if (!text) return null
-    // Handle "13 Mar 2026 11:57:05:953" – strip milliseconds for HH:MM:SS
-    const timePart = text.replace(/:(\d{3})$/, '')
-    const match = timePart.match(/\d{1,2}:\d{2}(?::\d{2})?/)
-    return match ? (match[0].length === 5 ? `${match[0]}:00` : match[0]) : (text.length === 5 ? `${text}:00` : text)
-  }
-
-  const parsePurityFromSymbol = (symbol: string | null | undefined) => {
-    if (!symbol) return null
-    const s = String(symbol)
-    if (/\b9999\b/.test(s)) return '99.99'
-    if (/\b999\b/.test(s)) return '99.90'
-    if (/\b995\b/.test(s)) return '99.50'
-    const m = s.match(/\b(\d{3,4})\b/)
-    if (m) {
-      const c = m[1]
-      return c.length === 4 ? `${c.slice(0, 2)}.${c.slice(2)}` : `${c.slice(0, 2)}.${c[2]}0`
-    }
-    return null
-  }
-
-  const parseDateTimeOrDate = (value: unknown) => {
-    if (value === null || value === undefined || value === '') return { date: null, time: null }
-    const text = String(value).trim().replace(/:(\d{3})$/, '')
-    const d = new Date(text)
-    if (Number.isNaN(d.getTime())) return { date: null, time: null }
-    return {
-      date: d.toISOString().split('T')[0],
-      time: d.toTimeString().slice(0, 8),
-    }
-  }
-
-  const insertOrdersInChunks = async (payloads: any[]) => {
-    const chunkSize = 200
-    for (let i = 0; i < payloads.length; i += chunkSize) {
-      const chunk = payloads.slice(i, i + chunkSize)
-      const { error } = await supabase.from('client_orders').insert(chunk)
-      if (error) throw error
-    }
-  }
-
   const sendOrderNotification = async (count: number, fileName: string, source: string = 'sheet') => {
     const recipient = import.meta.env.VITE_MEGHNA_EMAIL || 'aditya.gupta@safegold.in'
     if (!recipient) return
@@ -133,178 +35,6 @@ export default function ClientOrdersPage() {
       })
     } catch (error) {
       console.error('Error sending order notification:', error)
-    }
-  }
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setImporting(true)
-    setImportError(null)
-    setImportSummary(null)
-
-    try {
-      const buffer = await file.arrayBuffer()
-      let rows: Record<string, unknown>[]
-      const head = new Uint8Array(buffer).slice(0, 512)
-      const textStart = new TextDecoder().decode(head).toLowerCase()
-      const isHtml = textStart.startsWith('<html') || textStart.includes('<html') || textStart.includes('<table')
-      if (isHtml) {
-        const text = new TextDecoder().decode(buffer)
-        const parser = new DOMParser()
-        const doc = parser.parseFromString(text, 'text/html')
-        const table = doc.querySelector('table')
-        if (!table) throw new Error('No table found in the HTML file.')
-        const trs = table.querySelectorAll('tr')
-        if (trs.length < 2) throw new Error('The table is empty.')
-        const headerCells = trs[0].querySelectorAll('td, th')
-        const headers = Array.from(headerCells).map((c) => (c.textContent || '').trim() || `col_${c}`)
-        rows = []
-        for (let i = 1; i < trs.length; i++) {
-          const cells = trs[i].querySelectorAll('td, th')
-          const row: Record<string, unknown> = {}
-          headers.forEach((h, j) => {
-            row[h] = (cells[j]?.textContent || '').trim()
-          })
-          rows.push(row)
-        }
-      } else {
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true })
-        const sheet = workbook.Sheets[workbook.SheetNames[0]]
-        if (!sheet) throw new Error('No worksheet found in the uploaded file.')
-        rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
-      }
-      if (!rows.length) throw new Error('The uploaded sheet is empty.')
-
-      const payloads: any[] = []
-      const errors: string[] = []
-      let skipped = 0
-
-      for (let index = 0; index < rows.length; index++) {
-        const row = rows[index]
-        const normalizedRow: Record<string, unknown> = {}
-        Object.entries(row).forEach(([key, value]) => {
-          normalizedRow[normalizeKey(key)] = value
-        })
-
-        const clientName = toText(normalizedRow.partyname) ?? toText(normalizedRow.namefirm)
-        const timeVal = normalizedRow.time ?? normalizedRow.date
-        const dtParsed = parseDateTimeOrDate(timeVal)
-        const orderDate = toIsoDate(normalizedRow.date) ?? dtParsed.date
-        const orderTime = toTimeString(normalizedRow.time) ?? (orderDate ? dtParsed.time : null)
-        const deliveryDate = toIsoDate(normalizedRow.deliverydate)
-        const symbolVal = toText(normalizedRow.symbol)
-        const purity = toText(normalizedRow.purity) ?? parsePurityFromSymbol(symbolVal)
-        const symbol = symbolVal
-        const quantitySold = toNumber(normalizedRow.quantitysold) ?? toNumber(normalizedRow.quantity)
-        const grams = toNumber(normalizedRow.grams) ?? toNumber(normalizedRow.gm)
-        const totalGross = toNumber(normalizedRow.grossrevenue) ?? toNumber(normalizedRow.total)
-        const pricePerGram = toNumber((normalizedRow as Record<string, unknown>)['1gmprice'])
-        const oPrice = toNumber(normalizedRow.oprice)
-        const quotedRateRaw = toNumber(normalizedRow.quotedrate)
-          ?? (pricePerGram ? pricePerGram * 10 : (oPrice && grams ? (oPrice * 10) / grams : null))
-        let netRevenue = toNumber(normalizedRow.netrevenue1)
-        let gstAmount = toNumber(normalizedRow.gst1)
-        let tcsAmount = toNumber(normalizedRow.tcs)
-        let grossRevenue = totalGross ?? null
-        let quotedRate = quotedRateRaw ?? 0
-        if (totalGross != null && totalGross > 0) {
-          gstAmount = gstAmount ?? Math.round(totalGross * (3 / 103) * 100) / 100
-          netRevenue = netRevenue ?? Math.round((totalGross - (gstAmount || 0)) * 100) / 100
-          grossRevenue = totalGross
-          tcsAmount = tcsAmount ?? Math.round((netRevenue ?? 0) * 0.001 * 100) / 100
-          if (grams && !quotedRateRaw && !pricePerGram) quotedRate = Math.round(((netRevenue ?? 0) / grams) * 10) / 10
-        } else if (netRevenue != null && grams) {
-          gstAmount = gstAmount ?? Math.round(netRevenue * 0.03 * 100) / 100
-          tcsAmount = tcsAmount ?? Math.round(netRevenue * 0.001 * 100) / 100
-          grossRevenue = grossRevenue ?? netRevenue + (gstAmount || 0) + (tcsAmount || 0)
-          if (!quotedRateRaw) quotedRate = Math.round((netRevenue / grams) * 10) / 10
-        } else if (grams && quotedRate) {
-          netRevenue = netRevenue ?? Math.round((grams * quotedRate / 10) * 100) / 100
-          gstAmount = gstAmount ?? Math.round(netRevenue * 0.03 * 100) / 100
-          tcsAmount = tcsAmount ?? Math.round(netRevenue * 0.001 * 100) / 100
-          grossRevenue = grossRevenue ?? netRevenue + gstAmount + tcsAmount
-        }
-
-        if (!clientName || !orderDate || !grams) {
-          skipped += 1
-          errors.push(`Row ${index + 2}: missing client name, order date, or grams.`)
-          continue
-        }
-
-        const encoder = new TextEncoder()
-        const data = encoder.encode(JSON.stringify(row))
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-        const hashArray = Array.from(new Uint8Array(hashBuffer))
-        const importHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-
-        payloads.push({
-          client_name: clientName,
-          company_name: null,
-          order_date: orderDate,
-          order_time: orderTime,
-          delivery_date: deliveryDate,
-          product_symbol: symbol,
-          purity,
-          quantity: quantitySold ? Math.round(quantitySold) : 1,
-          grams,
-          quoted_rate: quotedRate,
-          making_charges: 0,
-          net_revenue: netRevenue,
-          gst_amount: gstAmount,
-          tcs_amount: tcsAmount,
-          gross_revenue: grossRevenue,
-          order_source: 'offline',
-          city: null,
-          trade_status: 'pending_supplier_booking',
-          remarks: `Imported from sheet: ${file.name}`,
-          created_by: user?.id || null,
-          import_hash: importHash,
-          raw_data: row
-        })
-      }
-
-      if (!payloads.length) {
-        throw new Error('No valid rows found to import. Please check the sheet formatting.')
-      }
-
-      const existingHashes = new Set<string>()
-      for (let i = 0; i < payloads.length; i += 200) {
-        const chunk = payloads.slice(i, i + 200)
-        const hashes = chunk.map(p => p.import_hash)
-        const { data } = await supabase.from('client_orders').select('import_hash').in('import_hash', hashes)
-        data?.forEach((d: any) => existingHashes.add(d.import_hash))
-      }
-
-      const newPayloads: any[] = []
-      const seenLocally = new Set<string>()
-
-      for (const p of payloads) {
-        if (!existingHashes.has(p.import_hash) && !seenLocally.has(p.import_hash)) {
-          seenLocally.add(p.import_hash)
-          newPayloads.push(p)
-        }
-      }
-
-      const duplicateCount = payloads.length - newPayloads.length
-
-      if (newPayloads.length > 0) {
-        await insertOrdersInChunks(newPayloads)
-        setHighlightedHashes(new Set(newPayloads.map(p => p.import_hash)))
-        await fetchOrders()
-        await sendOrderNotification(newPayloads.length, file.name)
-      } else {
-        setHighlightedHashes(new Set())
-        await fetchOrders() // just to refresh in case things changed
-      }
-
-      setImportSummary({ inserted: newPayloads.length, skipped, errors, fileName: file.name, duplicates: duplicateCount })
-    } catch (error) {
-      setImportError((error as Error).message)
-    } finally {
-      setImporting(false)
-      event.target.value = ''
     }
   }
 
@@ -387,21 +117,6 @@ export default function ClientOrdersPage() {
           <h1 className="page-excel-title">Meghna - Client Orders</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls,.html"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-            className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors disabled:opacity-60"
-          >
-            <Upload className="w-4 h-4 mr-1" />
-            {importing ? 'Importing...' : 'Import Sheet'}
-          </button>
           <button
             onClick={exportToExcel}
             disabled={filteredOrders.length === 0}
@@ -421,23 +136,6 @@ export default function ClientOrdersPage() {
         <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
           className="page-excel-search" />
       </div>
-
-      {importError && (
-        <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700 flex-shrink-0">
-          {importError}
-        </div>
-      )}
-
-      {importSummary && (
-        <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-700 flex-shrink-0">
-          <p className="font-medium">Imported {importSummary.inserted} new orders from {importSummary.fileName}.</p>
-          {(importSummary.duplicates ?? 0) > 0 && <p className="text-amber-700">Skipped {importSummary.duplicates} duplicate orders.</p>}
-          {importSummary.skipped > 0 && <p>Skipped {importSummary.skipped} rows with missing data.</p>}
-          {importSummary.errors.slice(0, 3).map((message, idx) => (
-            <p key={`${message}-${idx}`}>{message}</p>
-          ))}
-        </div>
-      )}
 
       <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col">
         <div className="table-container">
@@ -471,7 +169,7 @@ export default function ClientOrdersPage() {
               {filteredOrders.map((order, idx) => {
                 const nr = order.net_revenue ?? 0
                 return (
-                <tr key={order.id} className={order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-amber-100' : ''}>
+                <tr key={order.id}>
                   <td className="text-slate-600 text-center w-12 whitespace-nowrap">{idx + 1}</td>
                   <td className="text-slate-900 whitespace-nowrap">{formatDate(order.order_date)}</td>
                   <td className="text-slate-600 whitespace-nowrap">{order.order_time || ''}</td>
