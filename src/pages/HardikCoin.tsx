@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
-import { Search, RefreshCw, Plus, Trash2, MoreVertical, Columns, Download, Upload, ChevronsDown } from 'lucide-react'
+import { Search, RefreshCw, Plus, Trash2, MoreVertical, Download, Upload, ChevronsDown, X } from 'lucide-react'
 import {
   parseSheetBuffer,
   validateRequiredColumns,
@@ -136,7 +136,7 @@ export default function HardikCoinPage() {
   const [purchases, purchasesLoading, refetchPurchases] = useRealtimeTable<SupplierPurchase>('supplier_purchases', {
     orderBy: [{ column: 'created_at', ascending: false }],
   })
-  const [customColumns, { addColumn: addCustomColumn, renameColumn: renameCustomColumn, deleteColumn: deleteCustomColumn }] = useCustomColumns()
+  const [customColumns, { renameColumn: renameCustomColumn, deleteColumn: deleteCustomColumn }] = useCustomColumns()
   const [rowOrder, setRowOrder] = useRowOrder()
   const [highlightedNewOrderIds, setHighlightedImportIds] = useLatestImportIds()
 
@@ -146,9 +146,6 @@ export default function HardikCoinPage() {
   const [editValue, setEditValue] = useState('')
   const [contextRow, setContextRow] = useState<Row | null>(null)
   const [contextPos, setContextPos] = useState<{ x: number; y: number } | null>(null)
-  const [addColModal, setAddColModal] = useState(false)
-  const [addColName, setAddColName] = useState('')
-  const [addColPosition, setAddColPosition] = useState(999)
   const [renameColModal, setRenameColModal] = useState<HardikCustomColumn | null>(null)
   const [renameColName, setRenameColName] = useState('')
   const [colContextMenu, setColContextMenu] = useState<{ col: HardikCustomColumn; x: number; y: number } | null>(null)
@@ -169,6 +166,61 @@ export default function HardikCoinPage() {
   const scrollToBottom = useCallback(() => {
     tableContainerRef.current?.scrollTo({ top: tableContainerRef.current.scrollHeight, behavior: 'smooth' })
   }, [])
+
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false)
+  const [newOrderSaving, setNewOrderSaving] = useState(false)
+  const [newOrderForm, setNewOrderForm] = useState({
+    client_name: '', order_date: new Date().toISOString().split('T')[0],
+    order_time: '', delivery_date: '', product_symbol: '', purity: '',
+    grams: '', quantity: '1', quoted_rate: '', making_charges: '0',
+    tcs_amount: '0', city: '',
+  })
+
+  const resetNewOrderForm = () => setNewOrderForm({
+    client_name: '', order_date: new Date().toISOString().split('T')[0],
+    order_time: '', delivery_date: '', product_symbol: '', purity: '',
+    grams: '', quantity: '1', quoted_rate: '', making_charges: '0',
+    tcs_amount: '0', city: '',
+  })
+
+  const handleNewOrderSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault()
+    setNewOrderSaving(true)
+    try {
+      const grams = parseFloat(newOrderForm.grams) || 0
+      const quoted_rate = parseFloat(newOrderForm.quoted_rate) || 0
+      const making_charges = parseFloat(newOrderForm.making_charges) || 0
+      const tcs_amount = parseFloat(newOrderForm.tcs_amount) || 0
+      const quantity = parseInt(newOrderForm.quantity, 10) || 1
+
+      const net_revenue = Math.round(grams * quoted_rate * 100) / 100
+      const gst_amount = Math.round(net_revenue * 0.03 * 100) / 100
+      const gross_revenue = Math.round((net_revenue + gst_amount + tcs_amount) * 100) / 100
+
+      const { error } = await supabase.from('client_orders').insert({
+        client_name: newOrderForm.client_name,
+        order_date: newOrderForm.order_date,
+        order_time: newOrderForm.order_time || null,
+        delivery_date: newOrderForm.delivery_date || null,
+        product_symbol: newOrderForm.product_symbol || null,
+        purity: newOrderForm.purity || null,
+        grams, quantity, quoted_rate, making_charges,
+        net_revenue, gst_amount, tcs_amount, gross_revenue,
+        city: newOrderForm.city || null,
+        trade_status: 'pending_supplier_booking',
+        order_source: 'offline',
+        created_by: user?.id ?? null,
+      })
+      if (error) throw error
+      setShowNewOrderModal(false)
+      resetNewOrderForm()
+    } catch (err) {
+      console.error('Error creating order:', err)
+      alert('Failed to create order')
+    } finally {
+      setNewOrderSaving(false)
+    }
+  }, [newOrderForm, user?.id])
 
   const fetchData = useCallback(async () => {
     await Promise.all([refetchOrders(), refetchPurchases()])
@@ -603,15 +655,6 @@ export default function HardikCoinPage() {
     setContextPos(null)
   }
 
-  const handleAddColumn = async () => {
-    const name = addColName.trim()
-    if (!name) return
-    await addCustomColumn(name, addColPosition)
-    setAddColModal(false)
-    setAddColName('')
-    setAddColPosition(999)
-  }
-
   const handleRenameColumn = async (col: HardikCustomColumn) => {
     const name = renameColName.trim()
     if (!name) return
@@ -914,10 +957,11 @@ export default function HardikCoinPage() {
             {importing ? 'Importing...' : 'Import'}
           </button>
           <button
-            onClick={() => setAddColModal(true)}
-            className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors"
+            type="button"
+            onClick={() => setShowNewOrderModal(true)}
+            className="inline-flex items-center px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-medium rounded transition-colors"
           >
-            <Columns className="w-4 h-4 mr-1" />Add Column
+            <Plus className="w-4 h-4 mr-1" />New Order
           </button>
           <button
             onClick={exportToExcel}
@@ -1054,39 +1098,6 @@ export default function HardikCoinPage() {
         </>
       )}
 
-      {/* Add column modal */}
-      {addColModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-lg shadow-xl p-4 min-w-[16rem]" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-sm font-semibold mb-3">Add custom column</h3>
-            <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="Column name"
-                value={addColName}
-                onChange={(e) => setAddColName(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded"
-              />
-              <input
-                type="number"
-                placeholder="Position (0-based)"
-                value={addColPosition}
-                onChange={(e) => setAddColPosition(parseInt(e.target.value, 10) || 0)}
-                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded"
-              />
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setAddColModal(false)} className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded">
-                Cancel
-              </button>
-              <button onClick={handleAddColumn} className="px-3 py-1 text-sm bg-amber-500 text-white rounded hover:bg-amber-600">
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Column context menu */}
       {colContextMenu && (
         <>
@@ -1149,6 +1160,67 @@ export default function HardikCoinPage() {
                 Rename
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Order modal */}
+      {showNewOrderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-semibold text-slate-900">New Order</h2>
+              <button onClick={() => setShowNewOrderModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleNewOrderSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {([
+                  { label: 'Party Name *', key: 'client_name', required: true, type: 'text', placeholder: '' },
+                  { label: 'Order Date *', key: 'order_date', required: true, type: 'date', placeholder: '' },
+                  { label: 'Time', key: 'order_time', required: false, type: 'time', placeholder: '' },
+                  { label: 'Delivery Date', key: 'delivery_date', required: false, type: 'date', placeholder: '' },
+                  { label: 'Symbol', key: 'product_symbol', required: false, type: 'text', placeholder: 'e.g., GOLDGUINEA24K' },
+                  { label: 'Purity', key: 'purity', required: false, type: 'text', placeholder: 'e.g., 24K, 22K' },
+                  { label: 'Grams *', key: 'grams', required: true, type: 'number', placeholder: '' },
+                  { label: 'Quantity Sold', key: 'quantity', required: false, type: 'number', placeholder: '1' },
+                  { label: 'Quoted Rate (₹/10g) *', key: 'quoted_rate', required: true, type: 'number', placeholder: '' },
+                  { label: 'Making Charges (₹)', key: 'making_charges', required: false, type: 'number', placeholder: '0' },
+                  { label: 'TCS (₹)', key: 'tcs_amount', required: false, type: 'number', placeholder: '0' },
+                  { label: 'City', key: 'city', required: false, type: 'text', placeholder: '' },
+                ] as const).map(({ label, key, required, type, placeholder }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+                    <input
+                      type={type}
+                      required={required}
+                      placeholder={placeholder}
+                      step={type === 'number' ? '0.01' : undefined}
+                      value={newOrderForm[key]}
+                      onChange={(e) => setNewOrderForm({ ...newOrderForm, [key]: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowNewOrderModal(false)}
+                  className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={newOrderSaving}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {newOrderSaving ? 'Creating...' : 'Create Order'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
