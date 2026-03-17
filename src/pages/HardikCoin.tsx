@@ -156,8 +156,19 @@ export default function HardikCoinPage() {
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState(false)
-  const [highlightedNewOrderIds, setHighlightedNewOrderIds] = useState<Set<string>>(new Set())
+  const [highlightedNewOrderIds, setHighlightedNewOrderIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('hardik-latest-import-ids')
+      return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
+    } catch { return new Set() }
+  })
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const updateHighlightedIds = useCallback((ids: string[]) => {
+    const newSet = new Set(ids)
+    setHighlightedNewOrderIds(newSet)
+    localStorage.setItem('hardik-latest-import-ids', JSON.stringify(ids))
+  }, [])
 
   const persistRowOrder = useCallback((ids: string[]) => {
     setRowOrder(ids)
@@ -243,7 +254,7 @@ export default function HardikCoinPage() {
           return
         }
         const insertedIds = await insertOrdersInChunks(toInsert)
-        setHighlightedNewOrderIds(new Set(insertedIds))
+        updateHighlightedIds(insertedIds)
         await fetchData()
         setImportSuccess(true)
         setTimeout(() => setImportSuccess(false), 4000)
@@ -254,7 +265,7 @@ export default function HardikCoinPage() {
         event.target.value = ''
       }
     },
-    [user?.id, fetchData, insertOrdersInChunks]
+    [user?.id, fetchData, insertOrdersInChunks, updateHighlightedIds]
   )
 
   useEffect(() => {
