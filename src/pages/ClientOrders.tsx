@@ -17,6 +17,8 @@ export default function ClientOrdersPage() {
   const [importSummary, setImportSummary] = useState<{ inserted: number; skipped: number; errors: string[]; fileName: string; duplicates?: number } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [highlightedHashes, setHighlightedHashes] = useState<Set<string>>(new Set())
+  const [editingCell, setEditingCell] = useState<{ orderId: string; field: 'rate' | 'revenue' } | null>(null)
+  const [editValue, setEditValue] = useState('')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [formData, setFormData] = useState({
@@ -354,6 +356,57 @@ export default function ClientOrdersPage() {
     } catch (error) { console.error('Error updating status:', error) }
   }
 
+  const startEdit = (order: ClientOrder, field: 'rate' | 'revenue') => {
+    const val = field === 'rate' ? order.quoted_rate : order.gross_revenue
+    setEditingCell({ orderId: order.id, field })
+    setEditValue(val != null ? String(val) : '')
+  }
+
+  const saveEdit = async () => {
+    if (!editingCell) return
+    const order = orders.find(o => o.id === editingCell.orderId)
+    if (!order) return
+    const num = parseFloat(String(editValue).replace(/,/g, '').trim())
+    if (Number.isNaN(num) || num < 0) {
+      setEditingCell(null)
+      return
+    }
+    try {
+      if (editingCell.field === 'rate') {
+        const quoted_rate = Math.round(num * 10) / 10
+        const net_revenue = Math.round(((order.grams * quoted_rate) + order.making_charges) * 100) / 100
+        const gst_amount = Math.round(net_revenue * 0.03 * 100) / 100
+        const tcs_amount = Math.round(net_revenue * 0.001 * 100) / 100
+        const gross_revenue = Math.round((net_revenue + gst_amount + tcs_amount) * 100) / 100
+        const { error } = await supabase.from('client_orders').update({
+          quoted_rate, net_revenue, gst_amount, tcs_amount, gross_revenue
+        }).eq('id', editingCell.orderId)
+        if (error) throw error
+        setOrders(prev => prev.map(o => o.id === editingCell.orderId
+          ? { ...o, quoted_rate, net_revenue, gst_amount, tcs_amount, gross_revenue }
+          : o))
+      } else {
+        const gross_revenue = Math.round(num * 100) / 100
+        const net_revenue = Math.round((gross_revenue / 1.031) * 100) / 100
+        const gst_amount = Math.round(net_revenue * 0.03 * 100) / 100
+        const tcs_amount = Math.round(net_revenue * 0.001 * 100) / 100
+        const quoted_rate = order.grams > 0
+          ? Math.round(((net_revenue - order.making_charges) / order.grams) * 10) / 10
+          : (order.quoted_rate ?? 0)
+        const { error } = await supabase.from('client_orders').update({
+          quoted_rate, net_revenue, gst_amount, tcs_amount, gross_revenue
+        }).eq('id', editingCell.orderId)
+        if (error) throw error
+        setOrders(prev => prev.map(o => o.id === editingCell.orderId
+          ? { ...o, quoted_rate, net_revenue, gst_amount, tcs_amount, gross_revenue }
+          : o))
+      }
+    } catch (error) { console.error('Error updating order:', error); alert('Failed to update') }
+    setEditingCell(null)
+  }
+
+  const cancelEdit = () => setEditingCell(null)
+
   const filteredOrders = orders.filter(order =>
     order.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.order_number?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -459,8 +512,40 @@ export default function ClientOrdersPage() {
                   </td>
                   <td className="text-slate-600">{order.product_symbol || '-'} {order.purity ? `(${order.purity})` : ''}</td>
                   <td className="text-slate-900">{order.grams}g</td>
-                  <td className="text-slate-900">₹{order.quoted_rate?.toLocaleString() || '-'}</td>
-                  <td className="text-slate-900">₹{order.gross_revenue?.toLocaleString() || '-'}</td>
+                  <td className="text-slate-900">
+                    {editingCell?.orderId === order.id && editingCell?.field === 'rate' ? (
+                      <input
+                        type="number"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={saveEdit}
+                        onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
+                        autoFocus
+                        className="w-24 px-1.5 py-0.5 text-sm border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      />
+                    ) : (
+                      <button type="button" onClick={() => startEdit(order, 'rate')} className="text-left hover:bg-amber-50 -m-1 px-1 py-0.5 rounded min-w-[4rem]">
+                        ₹{order.quoted_rate?.toLocaleString() || '-'}
+                      </button>
+                    )}
+                  </td>
+                  <td className="text-slate-900">
+                    {editingCell?.orderId === order.id && editingCell?.field === 'revenue' ? (
+                      <input
+                        type="number"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={saveEdit}
+                        onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
+                        autoFocus
+                        className="w-28 px-1.5 py-0.5 text-sm border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      />
+                    ) : (
+                      <button type="button" onClick={() => startEdit(order, 'revenue')} className="text-left hover:bg-amber-50 -m-1 px-1 py-0.5 rounded min-w-[5rem]">
+                        ₹{order.gross_revenue?.toLocaleString() || '-'}
+                      </button>
+                    )}
+                  </td>
                   <td>
                     <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${statusColors[order.trade_status] || 'bg-slate-100'}`}>
                       {order.trade_status?.replace(/_/g, ' ')}
