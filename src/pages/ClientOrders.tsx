@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
-import { Plus, Search, Send, Upload, X } from 'lucide-react'
+import { formatDate } from '../lib/hardikUtils'
+import { Plus, Search, Upload, X } from 'lucide-react'
 import type { ClientOrder } from '../types'
 import * as XLSX from 'xlsx'
 
@@ -17,8 +18,6 @@ export default function ClientOrdersPage() {
   const [importSummary, setImportSummary] = useState<{ inserted: number; skipped: number; errors: string[]; fileName: string; duplicates?: number } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [highlightedHashes, setHighlightedHashes] = useState<Set<string>>(new Set())
-  const [editingCell, setEditingCell] = useState<{ orderId: string; field: 'rate' | 'revenue' } | null>(null)
-  const [editValue, setEditValue] = useState('')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [formData, setFormData] = useState({
@@ -349,92 +348,11 @@ export default function ClientOrdersPage() {
     finally { setSaving(false) }
   }
 
-  const sendToSupplier = async (orderId: string) => {
-    try {
-      await supabase.from('client_orders').update({ trade_status: 'pending_hedge' }).eq('id', orderId)
-      fetchOrders()
-    } catch (error) { console.error('Error updating status:', error) }
-  }
-
-  const startEdit = (order: ClientOrder, field: 'rate' | 'revenue') => {
-    const val = field === 'rate' ? order.quoted_rate : order.gross_revenue
-    setEditingCell({ orderId: order.id, field })
-    setEditValue(val != null ? String(val) : '')
-  }
-
-  const saveEdit = async () => {
-    if (!editingCell) return
-    const order = orders.find(o => o.id === editingCell.orderId)
-    if (!order) return
-    const num = parseFloat(String(editValue).replace(/,/g, '').trim())
-    if (Number.isNaN(num) || num < 0) {
-      setEditingCell(null)
-      return
-    }
-    try {
-      if (editingCell.field === 'rate') {
-        const quoted_rate = Math.round(num * 10) / 10
-        const net_revenue = Math.round(((order.grams * quoted_rate) + order.making_charges) * 100) / 100
-        const gst_amount = Math.round(net_revenue * 0.03 * 100) / 100
-        const tcs_amount = Math.round(net_revenue * 0.001 * 100) / 100
-        const gross_revenue = Math.round((net_revenue + gst_amount + tcs_amount) * 100) / 100
-        const { error } = await supabase.from('client_orders').update({
-          quoted_rate, net_revenue, gst_amount, tcs_amount, gross_revenue
-        }).eq('id', editingCell.orderId)
-        if (error) throw error
-        setOrders(prev => prev.map(o => o.id === editingCell.orderId
-          ? { ...o, quoted_rate, net_revenue, gst_amount, tcs_amount, gross_revenue }
-          : o))
-      } else {
-        const gross_revenue = Math.round(num * 100) / 100
-        const net_revenue = Math.round((gross_revenue / 1.031) * 100) / 100
-        const gst_amount = Math.round(net_revenue * 0.03 * 100) / 100
-        const tcs_amount = Math.round(net_revenue * 0.001 * 100) / 100
-        const quoted_rate = order.grams > 0
-          ? Math.round(((net_revenue - order.making_charges) / order.grams) * 10) / 10
-          : (order.quoted_rate ?? 0)
-        const { error } = await supabase.from('client_orders').update({
-          quoted_rate, net_revenue, gst_amount, tcs_amount, gross_revenue
-        }).eq('id', editingCell.orderId)
-        if (error) throw error
-        setOrders(prev => prev.map(o => o.id === editingCell.orderId
-          ? { ...o, quoted_rate, net_revenue, gst_amount, tcs_amount, gross_revenue }
-          : o))
-      }
-    } catch (error) { console.error('Error updating order:', error); alert('Failed to update') }
-    setEditingCell(null)
-  }
-
-  const cancelEdit = () => setEditingCell(null)
-
   const filteredOrders = orders.filter(order =>
     order.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.order_number?.toLowerCase().includes(searchTerm.toLowerCase())
+    order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.product_symbol?.toLowerCase().includes(searchTerm.toLowerCase())
   )
-
-  const dynamicKeys = useMemo(() => {
-    const keys = new Set<string>()
-    filteredOrders.forEach(order => {
-      // @ts-ignore
-      if (order.raw_data && typeof order.raw_data === 'object') {
-        // @ts-ignore
-        Object.keys(order.raw_data).forEach(k => keys.add(k))
-      }
-    })
-    return Array.from(keys)
-  }, [filteredOrders])
-
-  const statusColors: Record<string, string> = {
-    pending_supplier_booking: 'bg-yellow-100 text-yellow-800',
-    pending_hedge: 'bg-blue-100 text-blue-800',
-    pending_payment: 'bg-amber-100 text-amber-800',
-    payment_verified: 'bg-green-100 text-green-800',
-    do_created: 'bg-purple-100 text-purple-800',
-    in_delivery: 'bg-indigo-100 text-indigo-800',
-    reconciliation_pending: 'bg-orange-100 text-orange-800',
-    closed: 'bg-slate-100 text-slate-800',
-    cancelled: 'bg-red-100 text-red-800',
-  }
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
@@ -494,7 +412,7 @@ export default function ClientOrdersPage() {
           <table className="table-excel">
             <thead className="sticky top-0 z-10">
               <tr>
-                {['Sr.No', 'Order #', 'Client', 'Product', 'Grams', 'Rate', 'Revenue', 'Status', ...dynamicKeys, 'Actions'].map((h, i) => (
+                {['Sr.No', 'Date', 'Time', 'Delivery Date', 'Purity', 'Party Name', 'Symbol', 'Quantity Sold', 'Grams', 'Quoted Rate', 'Net Revenue_1', 'GST_1', 'TCS', 'Gross Revenue'].map((h, i) => (
                   <th key={h} className={i === 0 ? 'text-center w-12' : ''}>
                     {h}
                   </th>
@@ -502,70 +420,26 @@ export default function ClientOrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((order, idx) => (
-                <tr key={order.id} className={order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-emerald-50' : ''}>
+              {filteredOrders.map((order, idx) => {
+                const nr = order.net_revenue ?? 0
+                return (
+                <tr key={order.id} className={order.import_hash && highlightedHashes.has(order.import_hash) ? 'bg-amber-100' : ''}>
                   <td className="text-slate-600 text-center w-12 whitespace-nowrap">{idx + 1}</td>
-                  <td className="text-slate-900 whitespace-nowrap">{order.order_number || '-'}</td>
-                  <td className="text-slate-900">
-                    <span className="font-medium">{order.client_name}</span>
-                    {order.company_name && <span className="text-slate-500 block">{order.company_name}</span>}
-                  </td>
-                  <td className="text-slate-600">{order.product_symbol || '-'} {order.purity ? `(${order.purity})` : ''}</td>
-                  <td className="text-slate-900">{order.grams}g</td>
-                  <td className="text-slate-900">
-                    {editingCell?.orderId === order.id && editingCell?.field === 'rate' ? (
-                      <input
-                        type="number"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={saveEdit}
-                        onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
-                        autoFocus
-                        className="w-24 px-1.5 py-0.5 text-sm border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-500"
-                      />
-                    ) : (
-                      <button type="button" onClick={() => startEdit(order, 'rate')} className="text-left hover:bg-amber-50 -m-1 px-1 py-0.5 rounded min-w-[4rem]">
-                        ₹{order.quoted_rate?.toLocaleString() || '-'}
-                      </button>
-                    )}
-                  </td>
-                  <td className="text-slate-900">
-                    {editingCell?.orderId === order.id && editingCell?.field === 'revenue' ? (
-                      <input
-                        type="number"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={saveEdit}
-                        onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
-                        autoFocus
-                        className="w-28 px-1.5 py-0.5 text-sm border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-500"
-                      />
-                    ) : (
-                      <button type="button" onClick={() => startEdit(order, 'revenue')} className="text-left hover:bg-amber-50 -m-1 px-1 py-0.5 rounded min-w-[5rem]">
-                        ₹{order.gross_revenue?.toLocaleString() || '-'}
-                      </button>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${statusColors[order.trade_status] || 'bg-slate-100'}`}>
-                      {order.trade_status?.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td>
-                    {order.trade_status === 'pending_supplier_booking' && (
-                      <button onClick={() => sendToSupplier(order.id)} className="inline-flex items-center px-1.5 py-0.5 text-[10px] bg-blue-500 hover:bg-blue-600 text-white rounded whitespace-nowrap">
-                        <Send className="w-3 h-3 mr-1" />Send to Supplier
-                      </button>
-                    )}
-                  </td>
-                  {dynamicKeys.map(key => (
-                    <td key={key} className="text-slate-600 whitespace-nowrap">
-                      {/* @ts-ignore */}
-                      {order.raw_data?.[key] !== undefined ? String(order.raw_data[key]) : '-'}
-                    </td>
-                  ))}
+                  <td className="text-slate-900 whitespace-nowrap">{formatDate(order.order_date)}</td>
+                  <td className="text-slate-600 whitespace-nowrap">{order.order_time || ''}</td>
+                  <td className="text-slate-600 whitespace-nowrap">{formatDate(order.delivery_date)}</td>
+                  <td className="text-slate-600">{order.purity ?? '-'}</td>
+                  <td className="text-slate-900 font-medium">{order.client_name}</td>
+                  <td className="text-slate-600">{order.product_symbol ?? '-'}</td>
+                  <td className="text-slate-900 text-right">{order.quantity ?? 1}</td>
+                  <td className="text-slate-900 text-right">{order.grams}g</td>
+                  <td className="text-slate-900 text-right">₹{order.quoted_rate?.toLocaleString() ?? '-'}</td>
+                  <td className="text-slate-900 text-right">₹{nr ? nr.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</td>
+                  <td className="text-slate-600 text-right">₹{order.gst_amount?.toLocaleString() ?? '-'}</td>
+                  <td className="text-slate-600 text-right">₹{order.tcs_amount?.toLocaleString() ?? '-'}</td>
+                  <td className="text-slate-900 text-right">₹{order.gross_revenue?.toLocaleString() ?? '-'}</td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
