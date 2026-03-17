@@ -809,7 +809,7 @@ export default function HardikCoinPage() {
         case 'gross_revenue':
           return order.gross_revenue != null ? `₹${order.gross_revenue.toLocaleString()}` : '-'
         case 'quantity_bought':
-          return order.grams ?? order.quantity ?? '-'
+          return `${order.grams ?? order.quantity ?? 0}g`
         case 'trade_booked':
           return purchase ? `₹${(purchase.supplier_rate ?? 0).toLocaleString()}/10g` : 'Click to add'
         case 'making_charges':
