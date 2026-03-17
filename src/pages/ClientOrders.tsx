@@ -407,9 +407,25 @@ export default function ClientOrdersPage() {
         </div>
       )}
 
-      <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+      <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col">
         <div className="table-container">
-          <table className="table-excel min-w-max">
+          <table className="table-excel !w-max">
+            <colgroup>
+              <col style={{ width: '2.5rem' }} />
+              <col style={{ width: '4.5rem' }} />
+              <col style={{ width: '5rem' }} />
+              <col style={{ width: '4.5rem' }} />
+              <col style={{ width: '3rem' }} />
+              <col style={{ width: 'auto' }} />
+              <col style={{ width: '12rem' }} />
+              <col style={{ width: '3rem' }} />
+              <col style={{ width: '3rem' }} />
+              <col style={{ width: '5.5rem' }} />
+              <col style={{ width: '6rem' }} />
+              <col style={{ width: '5.5rem' }} />
+              <col style={{ width: '5.5rem' }} />
+              <col style={{ width: '7rem' }} />
+            </colgroup>
             <thead className="sticky top-0 z-10">
               <tr>
                 {['Sr.No', 'Date', 'Time', 'Delivery Date', 'Purity', 'Party Name', 'Symbol', 'Quantity Sold', 'Grams', 'Quoted Rate', 'Net Revenue_1', 'GST_1', 'TCS', 'Gross Revenue'].map((h, i) => (
