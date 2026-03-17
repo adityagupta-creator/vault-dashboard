@@ -136,14 +136,15 @@ export default function HardikCoinPage() {
         const supplier_rate = 0
         const supplier_making_charges = 0
         const { net_purchase, gst_2, gross_purchase } = calcFromTradeAndMaking(supplier_rate, supplier_making_charges, grams)
-        const { data, error } = await supabase.from('supplier_purchases').insert({
+        const { data: newPurchase, error } = await supabase.from('supplier_purchases').insert({
           client_order_id: order.id, supplier_name, supplier_grams: grams, supplier_rate, supplier_making_charges,
           net_purchase, gst_2, gross_purchase, supplier_status: 'booked', booked_by_agent_id: user?.id ?? null,
-        }).select('id').single()
+        }).select('*').single()
         if (error) { console.error(error); alert('Failed to create') }
-        else {
+        else if (newPurchase) {
           await supabase.from('client_orders').update({ trade_status: 'pending_hedge' }).eq('id', order.id)
-          fetchData()
+          setPurchases((prev) => [newPurchase as SupplierPurchase, ...prev])
+          setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, trade_status: 'pending_hedge' } : o)))
         }
       }
     } else {
@@ -167,14 +168,15 @@ export default function HardikCoinPage() {
         if (error) { console.error(error); alert('Failed to update') }
         else setPurchases((prev) => prev.map((p) => (p.id === purchase.id ? { ...p, supplier_rate: newRate, supplier_making_charges: newMaking, net_purchase, gst_2, gross_purchase } : p)))
       } else {
-        const { error } = await supabase.from('supplier_purchases').insert({
+        const { data: newPurchase, error } = await supabase.from('supplier_purchases').insert({
           client_order_id: order.id, supplier_name, supplier_grams: grams, supplier_rate: newRate, supplier_making_charges: newMaking,
           net_purchase, gst_2, gross_purchase, supplier_status: 'booked', booked_by_agent_id: user?.id ?? null,
-        })
+        }).select('*').single()
         if (error) { console.error(error); alert('Failed to create') }
-        else {
+        else if (newPurchase) {
           await supabase.from('client_orders').update({ trade_status: 'pending_hedge' }).eq('id', order.id)
-          fetchData()
+          setPurchases((prev) => [newPurchase as SupplierPurchase, ...prev])
+          setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, trade_status: 'pending_hedge' } : o)))
         }
       }
     }
