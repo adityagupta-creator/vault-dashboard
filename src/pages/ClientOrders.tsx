@@ -409,11 +409,11 @@ export default function ClientOrdersPage() {
 
       <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
         <div className="table-container">
-          <table className="table-excel">
+          <table className="table-excel min-w-max">
             <thead className="sticky top-0 z-10">
               <tr>
                 {['Sr.No', 'Date', 'Time', 'Delivery Date', 'Purity', 'Party Name', 'Symbol', 'Quantity Sold', 'Grams', 'Quoted Rate', 'Net Revenue_1', 'GST_1', 'TCS', 'Gross Revenue'].map((h, i) => (
-                  <th key={h} className={i === 0 ? 'text-center w-12' : ''}>
+                  <th key={h} className={`${i === 0 ? 'text-center w-12' : ''} ${['Quoted Rate', 'Net Revenue_1', 'GST_1', 'TCS', 'Gross Revenue'].includes(h) ? 'min-w-[5.5rem]' : ''}`}>
                     {h}
                   </th>
                 ))}
@@ -433,11 +433,11 @@ export default function ClientOrdersPage() {
                   <td className="text-slate-600">{order.product_symbol ?? '-'}</td>
                   <td className="text-slate-900 text-right">{order.quantity ?? 1}</td>
                   <td className="text-slate-900 text-right">{order.grams}g</td>
-                  <td className="text-slate-900 text-right">₹{order.quoted_rate?.toLocaleString() ?? '-'}</td>
-                  <td className="text-slate-900 text-right">₹{nr ? nr.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</td>
-                  <td className="text-slate-600 text-right">₹{order.gst_amount?.toLocaleString() ?? '-'}</td>
-                  <td className="text-slate-600 text-right">₹{order.tcs_amount?.toLocaleString() ?? '-'}</td>
-                  <td className="text-slate-900 text-right">₹{order.gross_revenue?.toLocaleString() ?? '-'}</td>
+                  <td className="text-slate-900 text-right min-w-[5.5rem]">₹{order.quoted_rate?.toLocaleString() ?? '-'}</td>
+                  <td className="text-slate-900 text-right min-w-[5.5rem]">₹{nr ? nr.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</td>
+                  <td className="text-slate-600 text-right min-w-[5.5rem]">₹{order.gst_amount?.toLocaleString() ?? '-'}</td>
+                  <td className="text-slate-600 text-right min-w-[5.5rem]">₹{order.tcs_amount?.toLocaleString() ?? '-'}</td>
+                  <td className="text-slate-900 text-right min-w-[6rem]">₹{order.gross_revenue?.toLocaleString() ?? '-'}</td>
                 </tr>
               )})}
             </tbody>
