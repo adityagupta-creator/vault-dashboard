@@ -17,6 +17,7 @@
   }
   .table-excel {
     @apply w-full border-collapse text-[10px];
+    min-width: max-content;
   }
   .table-excel th {
     @apply px-1 py-0.5 text-left font-medium text-slate-600 uppercase bg-slate-100 border border-slate-200 whitespace-nowrap;
@@ -33,6 +34,6 @@
     width: 2.5rem;
   }
   .table-container {
-    @apply flex-1 min-h-0 overflow-auto;
+    @apply flex-1 min-h-0 overflow-x-auto overflow-y-auto pr-4;
   }
 }

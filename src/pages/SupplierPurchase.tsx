@@ -91,7 +91,7 @@ export default function SupplierPurchasePage() {
         <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
           className="page-excel-search" />
       </div>
-      <div className="bg-white rounded border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+      <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col">
         <div className="table-container">
           <table className="table-excel">
             <thead className="sticky top-0 z-10">

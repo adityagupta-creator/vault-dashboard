@@ -408,9 +408,8 @@ export default function ClientOrdersPage() {
       )}
 
       <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col">
-        <div className="table-container flex-1 min-h-0 overflow-auto">
-          <div className="inline-block min-w-full pr-8">
-          <table className="table-excel" style={{ width: 'max-content' }}>
+        <div className="table-container">
+          <table className="table-excel">
             <colgroup>
               <col style={{ width: '2.5rem' }} />
               <col style={{ width: '4.5rem' }} />
@@ -425,12 +424,12 @@ export default function ClientOrdersPage() {
               <col style={{ width: '6rem' }} />
               <col style={{ width: '5.5rem' }} />
               <col style={{ width: '5.5rem' }} />
-              <col style={{ width: '8.5rem' }} />
+              <col style={{ width: '9rem' }} />
             </colgroup>
             <thead className="sticky top-0 z-10">
               <tr>
                 {['Sr.No', 'Date', 'Time', 'Delivery Date', 'Purity', 'Party Name', 'Symbol', 'Quantity Sold', 'Grams', 'Quoted Rate', 'Net Revenue_1', 'GST_1', 'TCS', 'Gross Revenue'].map((h, i) => (
-                  <th key={h} className={`${i === 0 ? 'text-center w-12' : ''} ${['Quoted Rate', 'Net Revenue_1', 'GST_1', 'TCS', 'Gross Revenue'].includes(h) ? 'min-w-[5.5rem]' : ''}`}>
+                  <th key={h} className={`${i === 0 ? 'text-center w-12' : ''} ${h === 'Gross Revenue' ? 'min-w-[9rem]' : ['Quoted Rate', 'Net Revenue_1', 'GST_1', 'TCS'].includes(h) ? 'min-w-[5.5rem]' : ''}`}>
                     {h}
                   </th>
                 ))}
@@ -454,12 +453,11 @@ export default function ClientOrdersPage() {
                   <td className="text-slate-900 text-right min-w-[5.5rem]">₹{nr ? nr.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</td>
                   <td className="text-slate-600 text-right min-w-[5.5rem]">₹{order.gst_amount?.toLocaleString() ?? '-'}</td>
                   <td className="text-slate-600 text-right min-w-[5.5rem]">₹{order.tcs_amount?.toLocaleString() ?? '-'}</td>
-                  <td className="text-slate-900 text-right pr-2 min-w-[8rem]">₹{order.gross_revenue?.toLocaleString() ?? '-'}</td>
+                  <td className="text-slate-900 text-right min-w-[9rem] whitespace-nowrap">₹{order.gross_revenue?.toLocaleString() ?? '-'}</td>
                 </tr>
               )})}
             </tbody>
           </table>
-          </div>
         </div>
         {filteredOrders.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No orders found</div>}
       </div>
