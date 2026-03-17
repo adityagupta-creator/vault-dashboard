@@ -56,6 +56,11 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'safegold-auth',
       partialize: (state) => ({ user: state.user }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.user) {
+          state.isLoading = false
+        }
+      },
     }
   )
 )

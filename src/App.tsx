@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/auth'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from './api/supabase'
 
 import MainLayout from './layouts/MainLayout'
@@ -11,9 +11,19 @@ import HardikCoinPage from './pages/HardikCoin'
 import VaultPage from './pages/Vault'
 import SettingsPage from './pages/Settings'
 
+const AUTH_TIMEOUT_MS = 8_000
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuthStore()
-  if (isLoading) return (
+  const [timedOut, setTimedOut] = useState(false)
+
+  useEffect(() => {
+    if (!isLoading) return
+    const t = setTimeout(() => setTimedOut(true), AUTH_TIMEOUT_MS)
+    return () => clearTimeout(t)
+  }, [isLoading])
+
+  if (isLoading && !timedOut) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
     </div>
@@ -30,7 +40,7 @@ function App() {
       if (document.visibilityState === 'visible') {
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (!session) setUser(null)
-        })
+        }).catch(() => {})
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -40,21 +50,24 @@ function App() {
   useEffect(() => {
     let isMounted = true
     let subscription: { unsubscribe: () => void } | null = null
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null
 
     const initAuth = async () => {
       try {
-        setLoading(true)
+        const hasPersistedUser = useAuthStore.getState().user != null
+        if (!hasPersistedUser) setLoading(true)
+
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) throw error
         if (session?.user) {
           const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-          if (profile) setUser(profile)
+          if (profile && isMounted) setUser(profile)
         } else {
-          setUser(null)
+          if (isMounted) setUser(null)
         }
       } catch (error) {
         console.error('Auth init error:', error)
-        setUser(null)
+        if (isMounted) setUser(null)
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -62,20 +75,28 @@ function App() {
       const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
           const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-          if (profile) setUser(profile)
+          if (profile && isMounted) setUser(profile)
         } else {
-          setUser(null)
+          if (isMounted) setUser(null)
         }
         if (isMounted) setLoading(false)
       })
       subscription = data.subscription
     }
 
+    safetyTimer = setTimeout(() => {
+      if (isMounted && useAuthStore.getState().isLoading) {
+        console.warn('Auth init safety timeout reached, forcing loading=false')
+        setLoading(false)
+      }
+    }, AUTH_TIMEOUT_MS)
+
     initAuth()
 
     return () => {
       isMounted = false
       subscription?.unsubscribe()
+      if (safetyTimer) clearTimeout(safetyTimer)
     }
   }, [setUser, setLoading])
 

@@ -9,6 +9,7 @@ import { withTimeout } from '../api/withTimeout'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 const POLL_INTERVAL_MS = 30_000
+const INITIAL_FETCH_TIMEOUT_MS = 12_000
 
 /**
  * Subscribe to a Supabase table with Realtime + polling fallback.
@@ -24,6 +25,7 @@ export function useRealtimeTable<T extends { id: string }>(
   const [data, setData] = useState<T[]>([])
   const [loading, setLoading] = useState(true)
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const initialFetchDone = useRef(false)
   const pollMs = options?.pollInterval ?? POLL_INTERVAL_MS
 
   const fetchAll = useCallback(async () => {
@@ -34,12 +36,14 @@ export function useRealtimeTable<T extends { id: string }>(
           query = query.order(o.column, { ascending: o.ascending })
         }
       }
-      const { data: rows, error } = await withTimeout(query)
+      const timeout = initialFetchDone.current ? undefined : INITIAL_FETCH_TIMEOUT_MS
+      const { data: rows, error } = await withTimeout(query, timeout)
       if (error) throw error
       setData((rows as T[]) || [])
     } catch (e) {
       console.error(`[useRealtimeTable] fetch ${table}:`, e)
     } finally {
+      initialFetchDone.current = true
       setLoading(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,14 +90,19 @@ export function useAppSetting<T>(
   const [value, setValueState] = useState<T>(defaultValue)
   const [loading, setLoading] = useState(true)
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const initialFetchDone = useRef(false)
 
   const fetchSetting = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', key)
-        .maybeSingle()
+      const timeout = initialFetchDone.current ? undefined : INITIAL_FETCH_TIMEOUT_MS
+      const { data, error } = await withTimeout(
+        supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', key)
+          .maybeSingle(),
+        timeout
+      )
       if (error) throw error
       if (data?.value != null) {
         setValueState(data.value as T)
@@ -101,6 +110,7 @@ export function useAppSetting<T>(
     } catch (e) {
       console.error(`[useAppSetting] fetch ${key}:`, e)
     } finally {
+      initialFetchDone.current = true
       setLoading(false)
     }
   }, [key])
