@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
-import { Search, RefreshCw, Truck, Plus, Trash2, MoreVertical, Columns } from 'lucide-react'
+import { Search, RefreshCw, Truck, Plus, Trash2, MoreVertical, Columns, Download } from 'lucide-react'
 import { extractCity, salesPersonFor } from '../lib/hardikUtils'
 import { recalcRow } from '../lib/hardikCalculations'
 import {
@@ -18,6 +18,7 @@ import {
   type HardikCustomColumn,
 } from '../lib/hardikConfig'
 import type { ClientOrder, SupplierPurchase } from '../types'
+import * as XLSX from 'xlsx'
 
 /** System column definition */
 type SystemColId =
@@ -99,6 +100,16 @@ function getCustomValue(order: ClientOrder, colId: string): string {
   const rd = order.raw_data
   if (!rd || typeof rd !== 'object') return ''
   return String(rd[colId] ?? '')
+}
+
+function toNumExport(v: unknown): number | '' {
+  if (v == null || v === '') return ''
+  const n = Number(v)
+  return Number.isNaN(n) ? '' : n
+}
+
+function round2Export(v: number): number {
+  return Math.round(v * 100) / 100
 }
 
 function setCustomValue(order: ClientOrder, colId: string, value: string): ClientOrder {
@@ -626,6 +637,67 @@ export default function HardikCoinPage() {
     setContextPos(null)
   }
 
+  /** Raw value for Excel export (numbers as numbers, rest as string) */
+  const getCellExportValue = (row: Row, col: { id: string; header: string }, idx: number): string | number => {
+    const { order, purchase } = row
+    const id = col.id as SystemColId
+    switch (id) {
+      case 'sr_no': return idx + 1
+      case 'order_date': return formatDate(order.order_date) || ''
+      case 'order_time': return order.order_time || ''
+      case 'delivery_date': return formatDate(order.delivery_date) || ''
+      case 'purity': return order.purity ?? ''
+      case 'client_name': return order.client_name ?? ''
+      case 'product_symbol': return order.product_symbol ?? ''
+      case 'quantity': return order.quantity ?? 1
+      case 'grams': return toNumExport(order.grams)
+      case 'quoted_rate': return toNumExport(order.quoted_rate)
+      case 'net_revenue': return toNumExport(order.net_revenue)
+      case 'gst_amount': return toNumExport(order.gst_amount)
+      case 'tcs_amount': return toNumExport(order.tcs_amount)
+      case 'gross_revenue': return toNumExport(order.gross_revenue)
+      case 'quantity_bought': return (order.quantity ?? order.grams ?? 0) as number
+      case 'trade_booked': return toNumExport(purchase?.supplier_rate)
+      case 'making_charges': return toNumExport(purchase?.supplier_making_charges)
+      case 'net_purchase': return toNumExport(purchase?.net_purchase)
+      case 'gst_2': return toNumExport(purchase?.gst_2)
+      case 'gross_purchase': return toNumExport(purchase?.gross_purchase)
+      case 'supplier_name': return purchase?.supplier_name ?? ''
+      case 'trade_margin': {
+        const nr = order.net_revenue ?? 0
+        const np = purchase?.net_purchase ?? 0
+        return nr && np ? round2Export(nr - np) : ''
+      }
+      case 'trade_margin_pct': {
+        const nr = order.net_revenue ?? 0
+        const np = purchase?.net_purchase ?? 0
+        const m = nr && np ? nr - np : null
+        return nr && m != null ? round2Export((m / nr) * 100) : ''
+      }
+      case 'city': return order.city || extractCity(order.product_symbol) ?? ''
+      case 'trade_status': return order.trade_status ?? ''
+      case 'sales_person': return getCustomValue(order, 'sales_person') || salesPersonFor(order.product_symbol) || ''
+      default:
+        if (col.id.startsWith('custom:')) return getCustomValue(order, col.id.slice(7)) || ''
+        return ''
+    }
+  }
+
+  const exportToExcel = () => {
+    const rows = filtered.map((row, idx) => {
+      const obj: Record<string, string | number> = {}
+      allCols.forEach((col) => {
+        obj[col.header] = getCellExportValue(row, col, idx) as string | number
+      })
+      return obj
+    })
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Hardik Coin')
+    const filename = `HardikCoin_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.xlsx`
+    XLSX.writeFile(wb, filename)
+  }
+
   const renderCell = (col: { id: string; header: string; editable: boolean }, row: Row, idx: number) => {
     const { order, purchase } = row
     const isEditing = editingCell?.orderId === order.id && editingCell?.field === (col.id as EditField)
@@ -837,6 +909,13 @@ export default function HardikCoinPage() {
             className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors"
           >
             <Columns className="w-4 h-4 mr-1" />Add Column
+          </button>
+          <button
+            onClick={exportToExcel}
+            disabled={filtered.length === 0}
+            className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors disabled:opacity-60"
+          >
+            <Download className="w-4 h-4 mr-1" />Export XLS
           </button>
           <Link
             to="/supplier-purchase"

@@ -3,7 +3,7 @@ import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { formatDate } from '../lib/hardikUtils'
-import { Plus, Search, Upload, X } from 'lucide-react'
+import { Download, Plus, Search, Upload, X } from 'lucide-react'
 import type { ClientOrder } from '../types'
 import * as XLSX from 'xlsx'
 
@@ -354,6 +354,31 @@ export default function ClientOrdersPage() {
     order.product_symbol?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const exportToExcel = () => {
+    const headers = ['Sr.No', 'Date', 'Time', 'Delivery Date', 'Purity', 'Party Name', 'Symbol', 'Quantity Sold', 'Grams', 'Quoted Rate', 'Net Revenue_1', 'GST_1', 'TCS', 'Gross Revenue']
+    const rows = filteredOrders.map((order, idx) => ({
+      'Sr.No': idx + 1,
+      'Date': formatDate(order.order_date) || '',
+      'Time': order.order_time || '',
+      'Delivery Date': formatDate(order.delivery_date) || '',
+      'Purity': order.purity ?? '',
+      'Party Name': order.client_name ?? '',
+      'Symbol': order.product_symbol ?? '',
+      'Quantity Sold': order.quantity ?? 1,
+      'Grams': order.grams ?? 0,
+      'Quoted Rate': order.quoted_rate ?? 0,
+      'Net Revenue_1': order.net_revenue ?? 0,
+      'GST_1': order.gst_amount ?? 0,
+      'TCS': order.tcs_amount ?? 0,
+      'Gross Revenue': order.gross_revenue ?? 0,
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Client Orders')
+    const filename = `ClientOrders_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.xlsx`
+    XLSX.writeFile(wb, filename)
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
 
   return (
@@ -377,6 +402,14 @@ export default function ClientOrdersPage() {
           >
             <Upload className="w-4 h-4 mr-1" />
             {importing ? 'Importing...' : 'Import Sheet'}
+          </button>
+          <button
+            onClick={exportToExcel}
+            disabled={filteredOrders.length === 0}
+            className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors disabled:opacity-60"
+          >
+            <Download className="w-4 h-4 mr-1" />
+            Export XLS
           </button>
           <button onClick={() => setShowModal(true)} className="inline-flex items-center px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-medium rounded transition-colors">
             <Plus className="w-4 h-4 mr-1" />New Order
