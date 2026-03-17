@@ -59,12 +59,48 @@ export function formatDate(d: string | null | undefined): string {
   return `${day}.${month}.${year}`
 }
 
-/** Format number in Indian style (e.g. 12,30,300) for ₹ values */
-export function formatRupee(n: number | null | undefined, decimals?: number): string {
+const INDIAN_LOCALE = 'en-IN'
+
+/**
+ * Format number in Indian style (e.g. 12,00,200) for display.
+ * Use for non-currency numbers (grams, quantity, etc.).
+ */
+export function formatNumberIndian(
+  n: number | null | undefined,
+  decimals?: number
+): string {
   if (n == null || Number.isNaN(n)) return ''
   const opts =
     decimals != null
       ? { minimumFractionDigits: decimals, maximumFractionDigits: decimals }
       : {}
-  return n.toLocaleString('en-IN', opts)
+  return n.toLocaleString(INDIAN_LOCALE, opts)
+}
+
+/**
+ * Format currency in Indian style with 2 decimal places (e.g. 80,55,300.00).
+ * Handles null/empty and negative values (e.g. ₹-1,20,000.00).
+ * Use for display only; does not change stored values.
+ */
+export function formatRupee(
+  n: number | null | undefined,
+  decimals: number = 2
+): string {
+  if (n == null || Number.isNaN(n)) return ''
+  return n.toLocaleString(INDIAN_LOCALE, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
+}
+
+/**
+ * Format currency for display with ₹ symbol (e.g. ₹80,55,300.00).
+ * Returns empty string for null/empty; use with fallback like formatRupeeWithSymbol(x) || '-'
+ */
+export function formatRupeeWithSymbol(
+  n: number | null | undefined,
+  decimals: number = 2
+): string {
+  const s = formatRupee(n, decimals)
+  return s === '' ? '' : `₹${s}`
 }

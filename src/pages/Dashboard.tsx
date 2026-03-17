@@ -80,7 +80,7 @@ export default function DashboardPage() {
     setWindowLabel('since your last check')
   }
 
-  const lastCheckedLabel = lastChecked ? lastChecked.toLocaleString() : '-'
+  const lastCheckedLabel = lastChecked ? lastChecked.toLocaleString('en-IN') : '-'
   const statusConfig: Record<OrderStatus, StatusConfig> = {
     checking: {
       title: 'Checking for new orders',

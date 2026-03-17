@@ -9,7 +9,7 @@ import {
   buildOrderPayloads,
   compositeKey as toCompositeKey,
 } from '../lib/sheetImport'
-import { extractCity, salesPersonFor, formatRupee } from '../lib/hardikUtils'
+import { extractCity, salesPersonFor, formatRupee, formatRupeeWithSymbol, formatNumberIndian } from '../lib/hardikUtils'
 import { recalcRow } from '../lib/hardikCalculations'
 import {
   getCustomColumns,
@@ -720,7 +720,7 @@ export default function HardikCoinPage() {
     setContextPos(null)
   }
 
-  /** Raw value for Excel export (numbers as numbers, rest as string) */
+  /** Excel export: currency columns use Indian format with ₹ (e.g. ₹80,55,300.00) */
   const getCellExportValue = (row: Row, col: { id: string; header: string }, idx: number): string | number => {
     const { order, purchase } = row
     const id = col.id as SystemColId
@@ -734,28 +734,29 @@ export default function HardikCoinPage() {
       case 'product_symbol': return order.product_symbol ?? ''
       case 'quantity': return order.quantity ?? 1
       case 'grams': return toNumExport(order.grams)
-      case 'quoted_rate': return toNumExport(order.quoted_rate)
-      case 'net_revenue': return toNumExport(order.net_revenue)
-      case 'gst_amount': return toNumExport(order.gst_amount)
-      case 'tcs_amount': return toNumExport(order.tcs_amount)
-      case 'gross_revenue': return toNumExport(order.gross_revenue)
+      case 'quoted_rate': return order.quoted_rate != null ? formatRupeeWithSymbol(order.quoted_rate, 2) : ''
+      case 'net_revenue': return order.net_revenue != null ? formatRupeeWithSymbol(order.net_revenue, 2) : ''
+      case 'gst_amount': return order.gst_amount != null ? formatRupeeWithSymbol(order.gst_amount, 2) : ''
+      case 'tcs_amount': return order.tcs_amount != null ? formatRupeeWithSymbol(order.tcs_amount, 2) : ''
+      case 'gross_revenue': return order.gross_revenue != null ? formatRupeeWithSymbol(order.gross_revenue, 2) : ''
       case 'quantity_bought': return (order.grams ?? order.quantity ?? 0) as number
-      case 'trade_booked': return toNumExport(purchase?.supplier_rate)
-      case 'making_charges': return toNumExport(purchase?.supplier_making_charges)
-      case 'net_purchase': return toNumExport(purchase?.net_purchase)
-      case 'gst_2': return toNumExport(purchase?.gst_2)
-      case 'gross_purchase': return toNumExport(purchase?.gross_purchase)
+      case 'trade_booked': return purchase?.supplier_rate != null ? formatRupeeWithSymbol(purchase.supplier_rate, 2) : ''
+      case 'making_charges': return purchase?.supplier_making_charges != null ? formatRupeeWithSymbol(purchase.supplier_making_charges, 2) : ''
+      case 'net_purchase': return purchase?.net_purchase != null ? formatRupeeWithSymbol(purchase.net_purchase, 2) : ''
+      case 'gst_2': return purchase?.gst_2 != null ? formatRupeeWithSymbol(purchase.gst_2, 2) : ''
+      case 'gross_purchase': return purchase?.gross_purchase != null ? formatRupeeWithSymbol(purchase.gross_purchase, 2) : ''
       case 'supplier_name': return purchase?.supplier_name ?? ''
       case 'trade_margin': {
         const nr = order.net_revenue ?? 0
         const np = purchase?.net_purchase ?? 0
-        return nr && np ? round2Export(nr - np) : ''
+        const m = nr && np ? nr - np : null
+        return m != null ? formatRupeeWithSymbol(m, 2) : ''
       }
       case 'trade_margin_pct': {
         const nr = order.net_revenue ?? 0
         const np = purchase?.net_purchase ?? 0
         const m = nr && np ? nr - np : null
-        return nr && m != null ? round2Export((m / nr) * 100) : ''
+        return nr && m != null ? `${formatNumberIndian((m / nr) * 100, 2)}%` : ''
       }
       case 'city': return order.city || extractCity(order.product_symbol) || ''
       case 'trade_status': return order.trade_status ?? ''
@@ -883,34 +884,34 @@ export default function HardikCoinPage() {
         case 'grams':
           return `${order.grams}g`
         case 'quoted_rate':
-          return order.quoted_rate != null ? `₹${formatRupee(order.quoted_rate)}` : '-'
+          return order.quoted_rate != null ? formatRupeeWithSymbol(order.quoted_rate, 2) : '-'
         case 'net_revenue':
-          return order.net_revenue != null ? `₹${formatRupee(order.net_revenue, 2)}` : '-'
+          return order.net_revenue != null ? formatRupeeWithSymbol(order.net_revenue, 2) : '-'
         case 'gst_amount':
-          return order.gst_amount != null ? `₹${formatRupee(order.gst_amount, 2)}` : '-'
+          return order.gst_amount != null ? formatRupeeWithSymbol(order.gst_amount, 2) : '-'
         case 'tcs_amount':
-          return order.tcs_amount != null ? `₹${formatRupee(order.tcs_amount, 2)}` : '-'
+          return order.tcs_amount != null ? formatRupeeWithSymbol(order.tcs_amount, 2) : '-'
         case 'gross_revenue':
-          return order.gross_revenue != null ? `₹${formatRupee(order.gross_revenue)}` : '-'
+          return order.gross_revenue != null ? formatRupeeWithSymbol(order.gross_revenue, 2) : '-'
         case 'quantity_bought':
           return `${order.grams ?? order.quantity ?? 0}g`
         case 'trade_booked':
-          return purchase ? `₹${formatRupee(purchase.supplier_rate ?? 0)}/10g` : 'Click to add'
+          return purchase ? `${formatRupeeWithSymbol(purchase.supplier_rate ?? 0, 2)}/10g` : 'Click to add'
         case 'making_charges':
-          return purchase ? `₹${formatRupee(purchase.supplier_making_charges ?? 0)}` : 'Click to add'
+          return purchase ? formatRupeeWithSymbol(purchase.supplier_making_charges ?? 0, 2) : 'Click to add'
         case 'net_purchase':
-          return purchase?.net_purchase != null ? `₹${formatRupee(purchase.net_purchase, 2)}` : '-'
+          return purchase?.net_purchase != null ? formatRupeeWithSymbol(purchase.net_purchase, 2) : '-'
         case 'gst_2':
-          return purchase?.gst_2 != null ? `₹${formatRupee(purchase.gst_2, 2)}` : '-'
+          return purchase?.gst_2 != null ? formatRupeeWithSymbol(purchase.gst_2, 2) : '-'
         case 'gross_purchase':
-          return purchase?.gross_purchase != null ? `₹${formatRupee(purchase.gross_purchase, 2)}` : '-'
+          return purchase?.gross_purchase != null ? formatRupeeWithSymbol(purchase.gross_purchase, 2) : '-'
         case 'supplier_name':
           return purchase?.supplier_name ?? 'Click to add'
         case 'trade_margin': {
           const nr = order.net_revenue ?? 0
           const np = purchase?.net_purchase ?? 0
           const m = nr && np ? nr - np : null
-          return m != null ? `₹${formatRupee(m, 2)}` : '-'
+          return m != null ? formatRupeeWithSymbol(m, 2) : '-'
         }
         case 'trade_margin_pct': {
           const nr = order.net_revenue ?? 0

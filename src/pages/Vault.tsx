@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { Plus, Search, X } from 'lucide-react'
+import { formatNumberIndian } from '../lib/hardikUtils'
 import type { VaultLogistics } from '../types'
 
 export default function VaultPage() {
@@ -68,15 +69,15 @@ export default function VaultPage() {
       <div className="grid grid-cols-3 gap-2 flex-shrink-0">
         <div className="bg-amber-500 rounded p-2 text-white text-center">
           <p className="text-[10px] text-amber-100">Available</p>
-          <p className="text-lg font-bold">{totalAvailable.toLocaleString()}g</p>
+          <p className="text-lg font-bold">{formatNumberIndian(totalAvailable)}g</p>
         </div>
         <div className="bg-blue-500 rounded p-2 text-white text-center">
           <p className="text-[10px] text-blue-100">Reserved</p>
-          <p className="text-lg font-bold">{totalReserved.toLocaleString()}g</p>
+          <p className="text-lg font-bold">{formatNumberIndian(totalReserved)}g</p>
         </div>
         <div className="bg-green-500 rounded p-2 text-white text-center">
           <p className="text-[10px] text-green-100">Delivered</p>
-          <p className="text-lg font-bold">{totalDelivered.toLocaleString()}g</p>
+          <p className="text-lg font-bold">{formatNumberIndian(totalDelivered)}g</p>
         </div>
       </div>
       <div className="relative flex-shrink-0">
@@ -98,10 +99,10 @@ export default function VaultPage() {
                 <tr key={vault.id}>
                   <td className="text-slate-600 text-center w-12">{idx + 1}</td>
                   <td className="font-medium text-slate-900">{vault.vault_name}</td>
-                  <td className="text-green-600">{toNumber(vault.available_gold).toLocaleString()}</td>
-                  <td className="text-amber-600">{toNumber(vault.reserved_gold).toLocaleString()}</td>
-                  <td className="text-blue-600">{toNumber(vault.delivered_gold).toLocaleString()}</td>
-                  <td className="text-slate-900 font-medium">{(toNumber(vault.available_gold) + toNumber(vault.reserved_gold) + toNumber(vault.delivered_gold)).toLocaleString()}</td>
+                  <td className="text-green-600">{formatNumberIndian(toNumber(vault.available_gold))}</td>
+                  <td className="text-amber-600">{formatNumberIndian(toNumber(vault.reserved_gold))}</td>
+                  <td className="text-blue-600">{formatNumberIndian(toNumber(vault.delivered_gold))}</td>
+                  <td className="text-slate-900 font-medium">{formatNumberIndian(toNumber(vault.available_gold) + toNumber(vault.reserved_gold) + toNumber(vault.delivered_gold))}</td>
                 </tr>
               ))}
             </tbody>

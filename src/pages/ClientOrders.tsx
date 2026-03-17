@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
-import { formatDate, formatRupee } from '../lib/hardikUtils'
+import { formatDate, formatRupeeWithSymbol, formatNumberIndian } from '../lib/hardikUtils'
 import { Download, Plus, Search, X } from 'lucide-react'
 import type { ClientOrder } from '../types'
 import * as XLSX from 'xlsx'
@@ -95,11 +95,11 @@ export default function ClientOrdersPage() {
       'Symbol': order.product_symbol ?? '',
       'Quantity Sold': order.quantity ?? 1,
       'Grams': order.grams ?? 0,
-      'Quoted Rate': order.quoted_rate ?? 0,
-      'Net Revenue_1': order.net_revenue ?? 0,
-      'GST_1': order.gst_amount ?? 0,
-      'TCS': order.tcs_amount ?? 0,
-      'Gross Revenue': order.gross_revenue ?? 0,
+      'Quoted Rate': order.quoted_rate != null ? formatRupeeWithSymbol(order.quoted_rate, 2) : '',
+      'Net Revenue_1': order.net_revenue != null ? formatRupeeWithSymbol(order.net_revenue, 2) : '',
+      'GST_1': order.gst_amount != null ? formatRupeeWithSymbol(order.gst_amount, 2) : '',
+      'TCS': order.tcs_amount != null ? formatRupeeWithSymbol(order.tcs_amount, 2) : '',
+      'Gross Revenue': order.gross_revenue != null ? formatRupeeWithSymbol(order.gross_revenue, 2) : '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
@@ -177,13 +177,13 @@ export default function ClientOrdersPage() {
                   <td className="text-slate-600">{order.purity ?? '-'}</td>
                   <td className="text-slate-900 font-medium">{order.client_name}</td>
                   <td className="text-slate-600">{order.product_symbol ?? '-'}</td>
-                  <td className="text-slate-900 text-right">{order.quantity ?? 1}</td>
-                  <td className="text-slate-900 text-right">{order.grams}g</td>
-                  <td className="text-slate-900 text-right min-w-[5.5rem]">₹{formatRupee(order.quoted_rate) || '-'}</td>
-                  <td className="text-slate-900 text-right min-w-[5.5rem]">₹{nr ? formatRupee(nr, 2) : '-'}</td>
-                  <td className="text-slate-600 text-right min-w-[5.5rem]">₹{formatRupee(order.gst_amount) || '-'}</td>
-                  <td className="text-slate-600 text-right min-w-[5.5rem]">₹{formatRupee(order.tcs_amount) || '-'}</td>
-                  <td className="text-slate-900 text-right min-w-[9rem] whitespace-nowrap">₹{formatRupee(order.gross_revenue) || '-'}</td>
+                  <td className="text-slate-900 text-right">{formatNumberIndian(order.quantity ?? 1)}</td>
+                  <td className="text-slate-900 text-right">{formatNumberIndian(order.grams)}g</td>
+                  <td className="text-slate-900 text-right min-w-[5.5rem]">{formatRupeeWithSymbol(order.quoted_rate, 2) || '-'}</td>
+                  <td className="text-slate-900 text-right min-w-[5.5rem]">{formatRupeeWithSymbol(nr, 2) || '-'}</td>
+                  <td className="text-slate-600 text-right min-w-[5.5rem]">{formatRupeeWithSymbol(order.gst_amount, 2) || '-'}</td>
+                  <td className="text-slate-600 text-right min-w-[5.5rem]">{formatRupeeWithSymbol(order.tcs_amount, 2) || '-'}</td>
+                  <td className="text-slate-900 text-right min-w-[9rem] whitespace-nowrap">{formatRupeeWithSymbol(order.gross_revenue, 2) || '-'}</td>
                 </tr>
               )})}
             </tbody>
