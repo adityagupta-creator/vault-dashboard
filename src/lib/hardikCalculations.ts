@@ -61,7 +61,7 @@ export function recalcSales(order: ClientOrder): Partial<ClientOrder> {
 /**
  * Purchase: Matches Python F1_FORMULAS exactly.
  * Net Purchase_2 = Quantity Bought * (Trade Booked + Making Charges)
- * N = Quantity Bought = Grams (matches sheet); O = Trade Booked; P = Making Charges
+ * N = Quantity Bought = Grams; O = Trade Booked; P = Making Charges
  * (Trade Booked and Making Charges are per gram in the formula)
  */
 export function recalcPurchase(

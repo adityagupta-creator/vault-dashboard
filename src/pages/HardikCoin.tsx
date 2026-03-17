@@ -655,7 +655,7 @@ export default function HardikCoinPage() {
       case 'gst_amount': return toNumExport(order.gst_amount)
       case 'tcs_amount': return toNumExport(order.tcs_amount)
       case 'gross_revenue': return toNumExport(order.gross_revenue)
-      case 'quantity_bought': return (order.quantity ?? order.grams ?? 0) as number
+      case 'quantity_bought': return (order.grams ?? order.quantity ?? 0) as number
       case 'trade_booked': return toNumExport(purchase?.supplier_rate)
       case 'making_charges': return toNumExport(purchase?.supplier_making_charges)
       case 'net_purchase': return toNumExport(purchase?.net_purchase)
@@ -809,7 +809,7 @@ export default function HardikCoinPage() {
         case 'gross_revenue':
           return order.gross_revenue != null ? `₹${order.gross_revenue.toLocaleString()}` : '-'
         case 'quantity_bought':
-          return order.quantity ?? order.grams ?? '-'
+          return order.grams ?? order.quantity ?? '-'
         case 'trade_booked':
           return purchase ? `₹${(purchase.supplier_rate ?? 0).toLocaleString()}/10g` : 'Click to add'
         case 'making_charges':
