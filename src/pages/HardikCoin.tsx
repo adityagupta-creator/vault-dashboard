@@ -674,7 +674,7 @@ export default function HardikCoinPage() {
         const m = nr && np ? nr - np : null
         return nr && m != null ? round2Export((m / nr) * 100) : ''
       }
-      case 'city': return order.city || extractCity(order.product_symbol) ?? ''
+      case 'city': return order.city || extractCity(order.product_symbol) || ''
       case 'trade_status': return order.trade_status ?? ''
       case 'sales_person': return getCustomValue(order, 'sales_person') || salesPersonFor(order.product_symbol) || ''
       default:

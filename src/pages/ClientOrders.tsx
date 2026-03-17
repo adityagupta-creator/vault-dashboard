@@ -355,7 +355,6 @@ export default function ClientOrdersPage() {
   )
 
   const exportToExcel = () => {
-    const headers = ['Sr.No', 'Date', 'Time', 'Delivery Date', 'Purity', 'Party Name', 'Symbol', 'Quantity Sold', 'Grams', 'Quoted Rate', 'Net Revenue_1', 'GST_1', 'TCS', 'Gross Revenue']
     const rows = filteredOrders.map((order, idx) => ({
       'Sr.No': idx + 1,
       'Date': formatDate(order.order_date) || '',
