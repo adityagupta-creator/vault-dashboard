@@ -2,9 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
+import { useAuthStore } from '../store/auth'
 import { Search, RefreshCw, Truck } from 'lucide-react'
-import { extractCity, salesPersonFor } from '../lib/hardikUtils'
+import { extractCity, salesPersonFor, PURCHASE_GST_RATE } from '../lib/hardikUtils'
 import type { ClientOrder, SupplierPurchase } from '../types'
+
+/** Calculate Net Purchase, GST_2, Gross Purchase from Trade Booked (rate/10g) + Making Charges. Matches Python F1_FORMULAS. */
+function calcFromTradeAndMaking(supplierRate: number, supplierMakingCharges: number, grams: number) {
+  const net_purchase = Math.round(((grams / 10) * supplierRate + supplierMakingCharges) * 100) / 100
+  const gst_2 = Math.round(net_purchase * PURCHASE_GST_RATE * 100) / 100
+  const gross_purchase = Math.round((net_purchase + gst_2) * 100) / 100
+  return { net_purchase, gst_2, gross_purchase }
+}
 
 /** 26 columns – matches Python Output File 1 (MASTER_HardikCoin) */
 const COLS = [
@@ -47,11 +56,16 @@ function toNum(v: unknown): number {
   return Number.isNaN(n) ? 0 : n
 }
 
+type EditField = 'trade_booked' | 'making_charges' | 'supplier_name'
+
 export default function HardikCoinPage() {
+  const { user } = useAuthStore()
   const [orders, setOrders] = useState<ClientOrder[]>([])
   const [purchases, setPurchases] = useState<SupplierPurchase[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [editingCell, setEditingCell] = useState<{ orderId: string; field: EditField } | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   const fetchData = async () => {
     setLoading(true)
@@ -95,6 +109,79 @@ export default function HardikCoinPage() {
   }
 
   const formatTime = (t: string | null) => t || ''
+
+  const startEdit = (order: ClientOrder, purchase: SupplierPurchase | null, field: EditField) => {
+    setEditingCell({ orderId: order.id, field })
+    if (field === 'trade_booked') setEditValue(purchase ? String(purchase.supplier_rate ?? '') : '')
+    else if (field === 'making_charges') setEditValue(purchase ? String(purchase.supplier_making_charges ?? '') : '')
+    else setEditValue(purchase?.supplier_name ?? '')
+  }
+
+  const saveEdit = async () => {
+    if (!editingCell) return
+    const order = orders.find((o) => o.id === editingCell.orderId)
+    if (!order) return
+    const purchase = byOrderId.get(editingCell.orderId) ?? null
+
+    const grams = order.grams || 0
+
+    if (editingCell.field === 'supplier_name') {
+      const supplier_name = String(editValue || '').trim()
+      if (!supplier_name) { setEditingCell(null); return }
+      if (purchase) {
+        const { error } = await supabase.from('supplier_purchases').update({ supplier_name }).eq('id', purchase.id)
+        if (error) { console.error(error); alert('Failed to update') }
+        else setPurchases((prev) => prev.map((p) => (p.id === purchase.id ? { ...p, supplier_name } : p)))
+      } else {
+        const supplier_rate = 0
+        const supplier_making_charges = 0
+        const { net_purchase, gst_2, gross_purchase } = calcFromTradeAndMaking(supplier_rate, supplier_making_charges, grams)
+        const { data, error } = await supabase.from('supplier_purchases').insert({
+          client_order_id: order.id, supplier_name, supplier_grams: grams, supplier_rate, supplier_making_charges,
+          net_purchase, gst_2, gross_purchase, supplier_status: 'booked', booked_by_agent_id: user?.id ?? null,
+        }).select('id').single()
+        if (error) { console.error(error); alert('Failed to create') }
+        else {
+          await supabase.from('client_orders').update({ trade_status: 'pending_hedge' }).eq('id', order.id)
+          fetchData()
+        }
+      }
+    } else {
+      const num = parseFloat(String(editValue || '').replace(/,/g, '').trim())
+      if (Number.isNaN(num) || num < 0) { setEditingCell(null); return }
+      const supplier_rate = purchase?.supplier_rate ?? 0
+      const supplier_making_charges = purchase?.supplier_making_charges ?? 0
+      const supplier_name = purchase?.supplier_name ?? order.client_name
+
+      let newRate = supplier_rate
+      let newMaking = supplier_making_charges
+      if (editingCell.field === 'trade_booked') newRate = Math.round(num * 100) / 100
+      else newMaking = Math.round(num * 100) / 100
+
+      const { net_purchase, gst_2, gross_purchase } = calcFromTradeAndMaking(newRate, newMaking, grams)
+
+      if (purchase) {
+        const { error } = await supabase.from('supplier_purchases').update({
+          supplier_rate: newRate, supplier_making_charges: newMaking, net_purchase, gst_2, gross_purchase,
+        }).eq('id', purchase.id)
+        if (error) { console.error(error); alert('Failed to update') }
+        else setPurchases((prev) => prev.map((p) => (p.id === purchase.id ? { ...p, supplier_rate: newRate, supplier_making_charges: newMaking, net_purchase, gst_2, gross_purchase } : p)))
+      } else {
+        const { error } = await supabase.from('supplier_purchases').insert({
+          client_order_id: order.id, supplier_name, supplier_grams: grams, supplier_rate: newRate, supplier_making_charges: newMaking,
+          net_purchase, gst_2, gross_purchase, supplier_status: 'booked', booked_by_agent_id: user?.id ?? null,
+        })
+        if (error) { console.error(error); alert('Failed to create') }
+        else {
+          await supabase.from('client_orders').update({ trade_status: 'pending_hedge' }).eq('id', order.id)
+          fetchData()
+        }
+      }
+    }
+    setEditingCell(null)
+  }
+
+  const cancelEdit = () => setEditingCell(null)
 
   if (loading) {
     return (
@@ -158,8 +245,44 @@ export default function HardikCoinPage() {
                     <td className=" text-slate-600 text-right">₹{order.tcs_amount?.toLocaleString() ?? '-'}</td>
                     <td className=" text-slate-900 text-right">₹{order.gross_revenue?.toLocaleString() ?? '-'}</td>
                     <td className=" text-slate-900 text-right">{order.grams}</td>
-                    <td className=" text-slate-600 text-right">{purchase ? `₹${(purchase.supplier_rate ?? 0).toLocaleString()}/10g` : '-'}</td>
-                    <td className=" text-slate-600 text-right">{purchase ? `₹${(purchase.supplier_making_charges ?? 0).toLocaleString()}` : '-'}</td>
+                    <td className=" text-slate-600 text-right">
+                      {editingCell?.orderId === order.id && editingCell?.field === 'trade_booked' ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
+                          autoFocus
+                          placeholder="₹/10g"
+                          className="w-24 px-1.5 py-0.5 text-sm border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                        />
+                      ) : (
+                        <button type="button" onClick={() => startEdit(order, purchase, 'trade_booked')} className="w-full text-right hover:bg-amber-50 -m-1 px-1 py-0.5 rounded">
+                          {purchase ? `₹${(purchase.supplier_rate ?? 0).toLocaleString()}/10g` : 'Click to add'}
+                        </button>
+                      )}
+                    </td>
+                    <td className=" text-slate-600 text-right">
+                      {editingCell?.orderId === order.id && editingCell?.field === 'making_charges' ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
+                          autoFocus
+                          placeholder="₹"
+                          className="w-20 px-1.5 py-0.5 text-sm border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                        />
+                      ) : (
+                        <button type="button" onClick={() => startEdit(order, purchase, 'making_charges')} className="w-full text-right hover:bg-amber-50 -m-1 px-1 py-0.5 rounded">
+                          {purchase ? `₹${(purchase.supplier_making_charges ?? 0).toLocaleString()}` : 'Click to add'}
+                        </button>
+                      )}
+                    </td>
                     <td className=" text-slate-900 text-right">
                       {purchase && purchase.net_purchase != null ? `₹${purchase.net_purchase.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
@@ -169,7 +292,24 @@ export default function HardikCoinPage() {
                     <td className=" text-slate-900 text-right">
                       {purchase && purchase.gross_purchase != null ? `₹${purchase.gross_purchase.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
-                    <td className=" text-slate-900">{purchase?.supplier_name ?? '-'}</td>
+                    <td className=" text-slate-900">
+                      {editingCell?.orderId === order.id && editingCell?.field === 'supplier_name' ? (
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
+                          autoFocus
+                          placeholder="Supplier name"
+                          className="w-full min-w-[6rem] px-1.5 py-0.5 text-sm border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        />
+                      ) : (
+                        <button type="button" onClick={() => startEdit(order, purchase, 'supplier_name')} className="w-full text-left hover:bg-amber-50 -m-1 px-1 py-0.5 rounded">
+                          {purchase?.supplier_name ?? 'Click to add'}
+                        </button>
+                      )}
+                    </td>
                     <td className=" text-slate-900 text-right">
                       {margin != null ? `₹${margin.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
