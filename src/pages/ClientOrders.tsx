@@ -135,7 +135,7 @@ export default function ClientOrdersPage() {
           </table>
         </div>
         {filteredOrders.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No orders found</div>}
-        {showScrollBottom && filteredOrders.length > 0 && (
+        {filteredOrders.length > 0 && (
           <button
             type="button"
             onClick={scrollToBottom}

@@ -1042,7 +1042,7 @@ export default function HardikCoinPage() {
           </table>
         </div>
         {filtered.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No trades found</div>}
-        {showScrollBottom && filtered.length > 0 && (
+        {filtered.length > 0 && (
           <button
             type="button"
             onClick={scrollToBottom}
