@@ -152,7 +152,7 @@ export default function HardikCoinPage() {
       if (Number.isNaN(num) || num < 0) { setEditingCell(null); return }
       const supplier_rate = purchase?.supplier_rate ?? 0
       const supplier_making_charges = purchase?.supplier_making_charges ?? 0
-      const supplier_name = purchase?.supplier_name ?? order.client_name
+      const supplier_name = purchase?.supplier_name ?? ''
 
       let newRate = supplier_rate
       let newMaking = supplier_making_charges
