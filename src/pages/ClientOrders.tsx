@@ -1,36 +1,35 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { supabase } from '../api/supabase'
-import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
 import { formatDate, formatRupeeWithSymbol, formatNumberIndian } from '../lib/hardikUtils'
-import { Download, Plus, Search, X } from 'lucide-react'
+import { Download, Plus, Search, X, ChevronsDown } from 'lucide-react'
+import { useRealtimeTable } from '../hooks/useRealtimeSync'
+import { useLatestImportIds } from '../hooks/useAppSettings'
 import type { ClientOrder } from '../types'
 import * as XLSX from 'xlsx'
 
 export default function ClientOrdersPage() {
   const { user } = useAuthStore()
-  const [orders, setOrders] = useState<ClientOrder[]>([])
-  const [loading, setLoading] = useState(true)
+  const [orders, loading] = useRealtimeTable<ClientOrder>('client_orders', {
+    orderBy: [{ column: 'created_at', ascending: false }],
+  })
+  const [highlightedIds] = useLatestImportIds()
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [saving, setSaving] = useState(false)
-  const readHighlightedIds = useCallback((): Set<string> => {
-    try {
-      const stored = localStorage.getItem('hardik-latest-import-ids')
-      return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
-    } catch { return new Set() }
-  }, [])
-  const [highlightedIds, setHighlightedIds] = useState<Set<string>>(readHighlightedIds)
+  const tableContainerRef = useRef<HTMLDivElement | null>(null)
+  const [showScrollBottom, setShowScrollBottom] = useState(true)
 
-  useEffect(() => {
-    const sync = () => setHighlightedIds(readHighlightedIds())
-    window.addEventListener('storage', sync)
-    window.addEventListener('focus', sync)
-    return () => {
-      window.removeEventListener('storage', sync)
-      window.removeEventListener('focus', sync)
-    }
-  }, [readHighlightedIds])
+  const handleTableScroll = useCallback(() => {
+    const el = tableContainerRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    setShowScrollBottom(!atBottom)
+  }, [])
+
+  const scrollToBottom = useCallback(() => {
+    tableContainerRef.current?.scrollTo({ top: tableContainerRef.current.scrollHeight, behavior: 'smooth' })
+  }, [])
 
   const [formData, setFormData] = useState({
     client_name: '', company_name: '',
@@ -39,8 +38,6 @@ export default function ClientOrdersPage() {
     grams: '', quantity: '', quoted_rate: '', making_charges: '0',
     order_source: 'offline' as 'online' | 'offline', city: '', remarks: '',
   })
-
-  useEffect(() => { fetchOrders() }, [])
 
   const sendOrderNotification = async (count: number, fileName: string, source: string = 'sheet') => {
     const recipient = import.meta.env.VITE_MEGHNA_EMAIL || 'aditya.gupta@safegold.in'
@@ -53,15 +50,6 @@ export default function ClientOrdersPage() {
     } catch (error) {
       console.error('Error sending order notification:', error)
     }
-  }
-
-  const fetchOrders = async () => {
-    try {
-      const { data, error } = await withTimeout(supabase.from('client_orders').select('*').order('created_at', { ascending: false }))
-      if (error) throw error
-      setOrders(data || [])
-    } catch (error) { console.error('Error fetching orders:', error) }
-    finally { setLoading(false) }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,7 +77,6 @@ export default function ClientOrdersPage() {
       if (error) throw error
       setShowModal(false)
       setFormData({ client_name: '', company_name: '', order_date: new Date().toISOString().split('T')[0], delivery_date: '', product_symbol: '', purity: '', grams: '', quantity: '', quoted_rate: '', making_charges: '0', order_source: 'offline', city: '', remarks: '' })
-      fetchOrders()
       sendOrderNotification(1, `Client: ${formData.client_name}, Product: ${formData.product_symbol || '-'} (${grams}g)`, 'manual entry')
     } catch (error) { console.error('Error creating order:', error); alert('Failed to create order') }
     finally { setSaving(false) }
@@ -154,8 +141,8 @@ export default function ClientOrdersPage() {
           className="page-excel-search" />
       </div>
 
-      <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col">
-        <div className="table-container">
+      <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col relative">
+        <div className="table-container" ref={tableContainerRef} onScroll={handleTableScroll}>
           <table className="table-excel">
             <colgroup>
               <col style={{ width: '2.5rem' }} />
@@ -207,6 +194,16 @@ export default function ClientOrdersPage() {
           </table>
         </div>
         {filteredOrders.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No orders found</div>}
+        {showScrollBottom && filteredOrders.length > 0 && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="absolute bottom-3 right-3 z-20 flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg transition-all"
+          >
+            <ChevronsDown className="w-3.5 h-3.5" />
+            Bottom
+          </button>
+        )}
       </div>
 
       {showModal && (

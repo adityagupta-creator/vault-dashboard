@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
-import { Search, RefreshCw, Plus, Trash2, MoreVertical, Columns, Download, Upload } from 'lucide-react'
+import { Search, RefreshCw, Plus, Trash2, MoreVertical, Columns, Download, Upload, ChevronsDown } from 'lucide-react'
 import {
   parseSheetBuffer,
   validateRequiredColumns,
@@ -11,17 +11,9 @@ import {
 } from '../lib/sheetImport'
 import { extractCity, salesPersonFor, formatRupee, formatRupeeWithSymbol, formatNumberIndian } from '../lib/hardikUtils'
 import { recalcRow } from '../lib/hardikCalculations'
-import {
-  getCustomColumns,
-  setCustomColumns,
-  addCustomColumn,
-  renameCustomColumn,
-  deleteCustomColumn,
-  getRowOrder,
-  setRowOrder,
-  mergeRowOrder,
-  type HardikCustomColumn,
-} from '../lib/hardikConfig'
+import { mergeRowOrder, type HardikCustomColumn } from '../lib/hardikConfig'
+import { useRealtimeTable } from '../hooks/useRealtimeSync'
+import { useCustomColumns, useRowOrder, useLatestImportIds } from '../hooks/useAppSettings'
 import type { ClientOrder, SupplierPurchase } from '../types'
 import * as XLSX from 'xlsx'
 
@@ -137,11 +129,19 @@ const TRADE_STATUS_OPTIONS = [
 
 export default function HardikCoinPage() {
   const { user } = useAuthStore()
-  const [orders, setOrders] = useState<ClientOrder[]>([])
-  const [purchases, setPurchases] = useState<SupplierPurchase[]>([])
-  const [loading, setLoading] = useState(true)
+
+  const [orders, ordersLoading, refetchOrders] = useRealtimeTable<ClientOrder>('client_orders', {
+    orderBy: [{ column: 'order_date', ascending: false }, { column: 'created_at', ascending: false }],
+  })
+  const [purchases, purchasesLoading, refetchPurchases] = useRealtimeTable<SupplierPurchase>('supplier_purchases', {
+    orderBy: [{ column: 'created_at', ascending: false }],
+  })
+  const [customColumns, { addColumn: addCustomColumn, renameColumn: renameCustomColumn, deleteColumn: deleteCustomColumn }] = useCustomColumns()
+  const [rowOrder, setRowOrder] = useRowOrder()
+  const [highlightedNewOrderIds, setHighlightedImportIds] = useLatestImportIds()
+
+  const loading = ordersLoading || purchasesLoading
   const [searchTerm, setSearchTerm] = useState('')
-  const [customColumns, setCustomColumnsState] = useState<HardikCustomColumn[]>(() => getCustomColumns())
   const [editingCell, setEditingCell] = useState<{ orderId: string; field: EditField } | null>(null)
   const [editValue, setEditValue] = useState('')
   const [contextRow, setContextRow] = useState<Row | null>(null)
@@ -152,48 +152,27 @@ export default function HardikCoinPage() {
   const [renameColModal, setRenameColModal] = useState<HardikCustomColumn | null>(null)
   const [renameColName, setRenameColName] = useState('')
   const [colContextMenu, setColContextMenu] = useState<{ col: HardikCustomColumn; x: number; y: number } | null>(null)
-  const [rowOrder, setRowOrderState] = useState<string[]>(() => getRowOrder())
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState(false)
-  const [highlightedNewOrderIds, setHighlightedNewOrderIds] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('hardik-latest-import-ids')
-      return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
-    } catch { return new Set() }
-  })
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const tableContainerRef = useRef<HTMLDivElement | null>(null)
+  const [showScrollBottom, setShowScrollBottom] = useState(true)
 
-  const updateHighlightedIds = useCallback((ids: string[]) => {
-    const newSet = new Set(ids)
-    setHighlightedNewOrderIds(newSet)
-    localStorage.setItem('hardik-latest-import-ids', JSON.stringify(ids))
+  const handleTableScroll = useCallback(() => {
+    const el = tableContainerRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    setShowScrollBottom(!atBottom)
   }, [])
 
-  const persistRowOrder = useCallback((ids: string[]) => {
-    setRowOrder(ids)
-    setRowOrderState(ids)
+  const scrollToBottom = useCallback(() => {
+    tableContainerRef.current?.scrollTo({ top: tableContainerRef.current.scrollHeight, behavior: 'smooth' })
   }, [])
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [ordersRes, purchasesRes] = await Promise.all([
-        withTimeout(supabase.from('client_orders').select('*').order('order_date', { ascending: false }).order('created_at', { ascending: false })),
-        withTimeout(supabase.from('supplier_purchases').select('*').order('created_at', { ascending: false })),
-      ])
-      setOrders(ordersRes.data || [])
-      setPurchases(purchasesRes.data || [])
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    await Promise.all([refetchOrders(), refetchPurchases()])
+  }, [refetchOrders, refetchPurchases])
 
   const insertOrdersInChunks = useCallback(async (payloads: Record<string, unknown>[]) => {
     const chunkSize = 200
@@ -254,7 +233,7 @@ export default function HardikCoinPage() {
           return
         }
         const insertedIds = await insertOrdersInChunks(toInsert)
-        updateHighlightedIds(insertedIds)
+        await setHighlightedImportIds(insertedIds)
         await fetchData()
         setImportSuccess(true)
         setTimeout(() => setImportSuccess(false), 4000)
@@ -265,7 +244,7 @@ export default function HardikCoinPage() {
         event.target.value = ''
       }
     },
-    [user?.id, fetchData, insertOrdersInChunks, updateHighlightedIds]
+    [user?.id, fetchData, insertOrdersInChunks, setHighlightedImportIds]
   )
 
   useEffect(() => {
@@ -273,7 +252,6 @@ export default function HardikCoinPage() {
     if (dbIds.length === 0) return
     const merged = mergeRowOrder(rowOrder, dbIds)
     if (JSON.stringify(merged) !== JSON.stringify(rowOrder)) {
-      setRowOrderState(merged)
       setRowOrder(merged)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -379,15 +357,6 @@ export default function HardikCoinPage() {
         purchase ? { ...purchase, ...purchaseUpdates } : null
       )
       const finalOrder = { ...order, ...orderUpdates, ...orderUpdate }
-      const finalPurchase = purchase
-        ? purchaseUpdate
-          ? { ...purchase, ...purchaseUpdates, ...purchaseUpdate }
-          : purchaseUpdates
-            ? { ...purchase, ...purchaseUpdates }
-            : purchase
-        : purchaseUpdates
-          ? ({ client_order_id: order.id, ...purchaseUpdates } as SupplierPurchase)
-          : null
 
       const orderPayload: Partial<ClientOrder> = {
         ...orderUpdates,
@@ -400,7 +369,7 @@ export default function HardikCoinPage() {
         return
       }
 
-      if (finalPurchase) {
+      if (purchase || purchaseUpdates) {
         if (purchase) {
           const { error: purchaseErr } = await supabase
             .from('supplier_purchases')
@@ -411,8 +380,7 @@ export default function HardikCoinPage() {
             alert('Failed to update purchase')
             return
           }
-          setPurchases((prev) => prev.map((p) => (p.id === purchase.id ? (finalPurchase as SupplierPurchase) : p)))
-        } else {
+        } else if (purchaseUpdates) {
           const insertPayload = {
             client_order_id: order.id,
             supplier_name: (purchaseUpdates as any)?.supplier_name ?? '',
@@ -425,7 +393,7 @@ export default function HardikCoinPage() {
             supplier_status: 'booked' as const,
             booked_by_agent_id: user?.id ?? null,
           }
-          const { data: newPurchase, error: purchaseErr } = await supabase
+          const { error: purchaseErr } = await supabase
             .from('supplier_purchases')
             .insert(insertPayload)
             .select('*')
@@ -436,15 +404,13 @@ export default function HardikCoinPage() {
             return
           }
           await supabase.from('client_orders').update({ trade_status: 'pending_hedge' }).eq('id', order.id)
-          setPurchases((prev) => [newPurchase as SupplierPurchase, ...prev])
-          setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, trade_status: 'pending_hedge' } : o)))
         }
       }
 
-      setOrders((prev) => prev.map((o) => (o.id === order.id ? finalOrder : o)))
+      await fetchData()
       setEditingCell(null)
     },
-    [user?.id]
+    [user?.id, fetchData]
   )
 
   const saveEdit = async () => {
@@ -459,12 +425,7 @@ export default function HardikCoinPage() {
       const colId = field.slice(7)
       const updated = setCustomValue(order, colId, String(editValue || '').trim())
       const { error } = await supabase.from('client_orders').update({ raw_data: updated.raw_data }).eq('id', order.id)
-      if (error) {
-        console.error(error)
-        alert('Failed to update')
-      } else {
-        setOrders((prev) => prev.map((o) => (o.id === order.id ? updated : o)))
-      }
+      if (error) { console.error(error); alert('Failed to update') }
       setEditingCell(null)
       return
     }
@@ -475,35 +436,20 @@ export default function HardikCoinPage() {
       case 'order_date': {
         const iso = val ? toISODate(val) || val : order.order_date
         const { error } = await supabase.from('client_orders').update({ order_date: iso }).eq('id', order.id)
-        if (error) {
-          console.error(error)
-          alert('Failed to update')
-        } else {
-          setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, order_date: iso } : o)))
-        }
+        if (error) { console.error(error); alert('Failed to update') }
         setEditingCell(null)
         return
       }
       case 'order_time': {
         const { error } = await supabase.from('client_orders').update({ order_time: val || null }).eq('id', order.id)
-        if (error) {
-          console.error(error)
-          alert('Failed to update')
-        } else {
-          setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, order_time: val || null } : o)))
-        }
+        if (error) { console.error(error); alert('Failed to update') }
         setEditingCell(null)
         return
       }
       case 'delivery_date': {
         const iso = val ? toISODate(val) || val : null
         const { error } = await supabase.from('client_orders').update({ delivery_date: iso }).eq('id', order.id)
-        if (error) {
-          console.error(error)
-          alert('Failed to update')
-        } else {
-          setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, delivery_date: iso } : o)))
-        }
+        if (error) { console.error(error); alert('Failed to update') }
         setEditingCell(null)
         return
       }
@@ -515,25 +461,14 @@ export default function HardikCoinPage() {
         const key = field === 'client_name' ? 'client_name' : field === 'product_symbol' ? 'product_symbol' : field === 'city' ? 'city' : field === 'trade_status' ? 'trade_status' : 'purity'
         const payload: Record<string, string | null> = { [key]: val || null }
         const { error } = await supabase.from('client_orders').update(payload).eq('id', order.id)
-        if (error) {
-          console.error(error)
-          alert('Failed to update')
-        } else {
-          const updated = { ...order, ...payload }
-          setOrders((prev) => prev.map((o) => (o.id === order.id ? updated : o)))
-        }
+        if (error) { console.error(error); alert('Failed to update') }
         setEditingCell(null)
         return
       }
       case 'sales_person': {
         const updated = setCustomValue(order, 'sales_person', val)
         const { error } = await supabase.from('client_orders').update({ raw_data: updated.raw_data }).eq('id', order.id)
-        if (error) {
-          console.error(error)
-          alert('Failed to update')
-        } else {
-          setOrders((prev) => prev.map((o) => (o.id === order.id ? updated : o)))
-        }
+        if (error) { console.error(error); alert('Failed to update') }
         setEditingCell(null)
         return
       }
@@ -565,47 +500,27 @@ export default function HardikCoinPage() {
         const n = parseFloat(val.replace(/,/g, ''))
         if (field === 'supplier_name') {
           const supplier_name = val
-          if (!supplier_name) {
-            setEditingCell(null)
-            return
-          }
+          if (!supplier_name) { setEditingCell(null); return }
           if (purchase) {
-            const { orderUpdate, purchaseUpdate } = recalcRow(order, { ...purchase, supplier_name })
+            const { purchaseUpdate } = recalcRow(order, { ...purchase, supplier_name })
             const { error } = await supabase.from('supplier_purchases').update({ supplier_name, ...purchaseUpdate }).eq('id', purchase.id)
-            if (error) {
-              console.error(error)
-              alert('Failed to update')
-            } else {
-              setPurchases((prev) => prev.map((p) => (p.id === purchase.id ? { ...p, supplier_name, ...purchaseUpdate } : p)))
-            }
+            if (error) { console.error(error); alert('Failed to update') }
           } else {
             const { orderUpdate, purchaseUpdate } = recalcRow(order, {
-              client_order_id: order.id,
-              supplier_name,
-              supplier_rate: 0,
-              supplier_making_charges: 0,
-              supplier_grams: order.grams,
+              client_order_id: order.id, supplier_name, supplier_rate: 0, supplier_making_charges: 0, supplier_grams: order.grams,
             } as SupplierPurchase)
             const insertPayload = {
-              client_order_id: order.id,
-              supplier_name,
-              supplier_grams: order.grams,
-              supplier_rate: 0,
-              supplier_making_charges: 0,
+              client_order_id: order.id, supplier_name, supplier_grams: order.grams,
+              supplier_rate: 0, supplier_making_charges: 0,
               net_purchase: (purchaseUpdate as any)?.net_purchase ?? 0,
               gst_2: (purchaseUpdate as any)?.gst_2 ?? 0,
               gross_purchase: (purchaseUpdate as any)?.gross_purchase ?? 0,
-              supplier_status: 'booked' as const,
-              booked_by_agent_id: user?.id ?? null,
+              supplier_status: 'booked' as const, booked_by_agent_id: user?.id ?? null,
             }
-            const { data: newPurchase, error } = await supabase.from('supplier_purchases').insert(insertPayload).select('*').single()
-            if (error) {
-              console.error(error)
-              alert('Failed to create purchase')
-            } else {
-              await supabase.from('client_orders').update({ trade_status: 'pending_hedge' }).eq('id', order.id)
-              setPurchases((prev) => [newPurchase as SupplierPurchase, ...prev])
-              setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, trade_status: 'pending_hedge' } : o)))
+            const { error } = await supabase.from('supplier_purchases').insert(insertPayload).select('*').single()
+            if (error) { console.error(error); alert('Failed to create purchase') }
+            else {
+              await supabase.from('client_orders').update({ trade_status: 'pending_hedge', ...orderUpdate }).eq('id', order.id)
             }
           }
         } else {
@@ -616,38 +531,24 @@ export default function HardikCoinPage() {
             await persistAndRecalc(order, purchase, {}, { supplier_rate: newRate, supplier_making_charges: newMaking })
           } else {
             const { orderUpdate, purchaseUpdate } = recalcRow(order, {
-              client_order_id: order.id,
-              supplier_name,
-              supplier_rate: newRate,
-              supplier_making_charges: newMaking,
-              supplier_grams: order.grams,
+              client_order_id: order.id, supplier_name, supplier_rate: newRate, supplier_making_charges: newMaking, supplier_grams: order.grams,
             } as SupplierPurchase)
             const insertPayload = {
-              client_order_id: order.id,
-              supplier_name,
-              supplier_grams: order.grams,
-              supplier_rate: newRate,
-              supplier_making_charges: newMaking,
+              client_order_id: order.id, supplier_name, supplier_grams: order.grams,
+              supplier_rate: newRate, supplier_making_charges: newMaking,
               net_purchase: (purchaseUpdate as any)?.net_purchase ?? 0,
               gst_2: (purchaseUpdate as any)?.gst_2 ?? 0,
               gross_purchase: (purchaseUpdate as any)?.gross_purchase ?? 0,
-              supplier_status: 'booked' as const,
-              booked_by_agent_id: user?.id ?? null,
+              supplier_status: 'booked' as const, booked_by_agent_id: user?.id ?? null,
             }
-            const { data: newPurchase, error } = await supabase.from('supplier_purchases').insert(insertPayload).select('*').single()
-            if (error) {
-              console.error(error)
-              alert('Failed to create purchase')
-            } else {
-              await supabase.from('client_orders').update({ trade_status: 'pending_hedge' }).eq('id', order.id)
-              setPurchases((prev) => [newPurchase as SupplierPurchase, ...prev])
-              setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, trade_status: 'pending_hedge' } : o)))
-              const up = { ...orderUpdate }
-              await supabase.from('client_orders').update(up).eq('id', order.id)
-              setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...orderUpdate } : o)))
+            const { error } = await supabase.from('supplier_purchases').insert(insertPayload).select('*').single()
+            if (error) { console.error(error); alert('Failed to create purchase') }
+            else {
+              await supabase.from('client_orders').update({ trade_status: 'pending_hedge', ...orderUpdate }).eq('id', order.id)
             }
           }
         }
+        await fetchData()
         setEditingCell(null)
         return
       }
@@ -690,40 +591,37 @@ export default function HardikCoinPage() {
     }
     const newIds = [...effectiveRowOrder]
     newIds.splice(idx, 0, (newOrder as ClientOrder).id)
-    persistRowOrder(newIds)
-    setOrders((prev) => [...prev, newOrder as ClientOrder])
+    await setRowOrder(newIds)
+    await fetchData()
   }
 
   const handleDeleteRow = async (row: Row) => {
     if (!confirm('Delete this row? This will remove the order from the Hardik sheet display. The order will remain in the database.')) return
     const newIds = effectiveRowOrder.filter((id) => id !== row.order.id)
-    persistRowOrder(newIds)
+    await setRowOrder(newIds)
     setContextRow(null)
     setContextPos(null)
   }
 
-  const handleAddColumn = () => {
+  const handleAddColumn = async () => {
     const name = addColName.trim()
     if (!name) return
-    const col = addCustomColumn(name, addColPosition)
-    setCustomColumnsState(getCustomColumns())
+    await addCustomColumn(name, addColPosition)
     setAddColModal(false)
     setAddColName('')
     setAddColPosition(999)
   }
 
-  const handleRenameColumn = (col: HardikCustomColumn) => {
+  const handleRenameColumn = async (col: HardikCustomColumn) => {
     const name = renameColName.trim()
     if (!name) return
-    renameCustomColumn(col.id, name)
-    setCustomColumnsState(getCustomColumns())
+    await renameCustomColumn(col.id, name)
     setRenameColModal(null)
     setRenameColName('')
   }
 
-  const handleDeleteColumn = (col: HardikCustomColumn) => {
-    deleteCustomColumn(col.id)
-    setCustomColumnsState(getCustomColumns())
+  const handleDeleteColumn = async (col: HardikCustomColumn) => {
+    await deleteCustomColumn(col.id)
   }
 
   const closeContextMenu = () => {
@@ -1056,8 +954,8 @@ export default function HardikCoinPage() {
           File imported successfully.
         </div>
       )}
-      <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col">
-        <div className="table-container">
+      <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col relative">
+        <div className="table-container" ref={tableContainerRef} onScroll={handleTableScroll}>
           <table className="table-excel w-full [&_thead_th]:bg-[#1F4E79] [&_thead_th]:text-white [&_thead_th]:border-slate-600">
             <thead className="sticky top-0 z-10">
               <tr>
@@ -1100,6 +998,16 @@ export default function HardikCoinPage() {
           </table>
         </div>
         {filtered.length === 0 && <div className="p-4 text-center text-xs text-slate-500">No trades found</div>}
+        {showScrollBottom && filtered.length > 0 && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="absolute bottom-3 right-3 z-20 flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg transition-all"
+          >
+            <ChevronsDown className="w-3.5 h-3.5" />
+            Bottom
+          </button>
+        )}
       </div>
 
       {/* Row context menu */}

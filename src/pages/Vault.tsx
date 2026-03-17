@@ -1,37 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { supabase } from '../api/supabase'
-import { withTimeout } from '../api/withTimeout'
 import { Plus, Search, X } from 'lucide-react'
 import { formatNumberIndian } from '../lib/hardikUtils'
+import { useRealtimeTable } from '../hooks/useRealtimeSync'
 import type { VaultLogistics } from '../types'
 
 export default function VaultPage() {
-  const [vaults, setVaults] = useState<VaultLogistics[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [vaults, loading, refetchVaults] = useRealtimeTable<VaultLogistics>('vault_logistics', {
+    orderBy: [{ column: 'vault_name', ascending: true }],
+  })
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [formData, setFormData] = useState({ vault_name: '', available_gold: '', reserved_gold: '0', delivered_gold: '0' })
 
-  useEffect(() => { fetchVaults() }, [])
-
   const toNumber = (value: unknown) => {
     const num = typeof value === 'number' ? value : Number(value)
     return Number.isFinite(num) ? num : 0
-  }
-
-  const fetchVaults = async () => {
-    try {
-      setError(null)
-      const { data, error: fetchError } = await withTimeout(supabase.from('vault_logistics').select('*').order('vault_name'))
-      if (fetchError) throw fetchError
-      setVaults(data || [])
-    } catch (error) {
-      console.error(error)
-      setError((error as Error)?.message || 'Failed to load vaults')
-    }
-    finally { setLoading(false) }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +31,7 @@ export default function VaultPage() {
       })
       setShowModal(false)
       setFormData({ vault_name: '', available_gold: '', reserved_gold: '0', delivered_gold: '0' })
-      fetchVaults()
+      await refetchVaults()
     } catch (error) { console.error(error); alert('Failed to create vault') }
     finally { setSaving(false) }
   }
@@ -85,9 +70,6 @@ export default function VaultPage() {
         <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
           className="page-excel-search" />
       </div>
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded p-2 text-xs flex-shrink-0">{error}</div>
-      )}
       <div className="bg-white rounded border border-slate-200 flex-1 min-h-0 flex flex-col">
         <div className="table-container">
           <table className="table-excel">
