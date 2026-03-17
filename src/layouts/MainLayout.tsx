@@ -8,8 +8,8 @@ import { useState } from 'react'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Meghna - Client Orders', href: '/client-orders', icon: ShoppingCart },
   { name: 'Hardik Coin', href: '/hardik-coin', icon: FileSpreadsheet },
+  { name: 'Meghna - Client Orders', href: '/client-orders', icon: ShoppingCart },
   { name: 'Vault Inventory', href: '/vault', icon: Archive },
 ]
 
