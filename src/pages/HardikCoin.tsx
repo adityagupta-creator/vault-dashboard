@@ -276,8 +276,10 @@ export default function HardikCoinPage() {
       const finalOrder = { ...order, ...orderUpdates, ...orderUpdate }
       const finalPurchase = purchase
         ? purchaseUpdate
-          ? { ...purchase, ...purchaseUpdate }
-          : purchase
+          ? { ...purchase, ...purchaseUpdates, ...purchaseUpdate }
+          : purchaseUpdates
+            ? { ...purchase, ...purchaseUpdates }
+            : purchase
         : purchaseUpdates
           ? ({ client_order_id: order.id, ...purchaseUpdates } as SupplierPurchase)
           : null
@@ -297,7 +299,7 @@ export default function HardikCoinPage() {
         if (purchase) {
           const { error: purchaseErr } = await supabase
             .from('supplier_purchases')
-            .update(purchaseUpdate ?? purchaseUpdates ?? {})
+            .update({ ...purchaseUpdates, ...purchaseUpdate })
             .eq('id', purchase.id)
           if (purchaseErr) {
             console.error(purchaseErr)
