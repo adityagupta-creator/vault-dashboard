@@ -4,6 +4,7 @@
  */
 
 import * as XLSX from 'xlsx'
+import { extractCity, salesPersonFor } from './hardikUtils'
 
 export const REQUIRED_COLUMN_HINTS = ['date', 'time', 'partyname', 'namefirm', 'quantity', 'quantitysold', 'grams', 'gm']
 
@@ -201,32 +202,28 @@ export async function buildOrderPayloads(
     const grams = toNumber(normalizedRow.grams) ?? toNumber(normalizedRow.gm)
     const totalGross = toNumber(normalizedRow.grossrevenue) ?? toNumber(normalizedRow.total)
     const pricePerGram = toNumber((normalizedRow as Record<string, unknown>)['1gmprice'])
-    const oPrice = toNumber(normalizedRow.oprice)
-    const quotedRateRaw =
-      toNumber(normalizedRow.quotedrate) ??
-      (pricePerGram ? pricePerGram * 10 : oPrice && grams ? (oPrice * 10) / grams : null)
-    let netRevenue = toNumber(normalizedRow.netrevenue1)
-    let gstAmount = toNumber(normalizedRow.gst1)
-    let tcsAmount = toNumber(normalizedRow.tcs)
-    let grossRevenue = totalGross ?? null
-    let quotedRate = quotedRateRaw ?? 0
+
+    // Quoted Rate is stored as per 10g
+    const quotedRateRaw = toNumber(normalizedRow.quotedrate)
+    let netRevenue: number | null = null
+    let gstAmount: number | null = null
+    let grossRevenue: number | null = null
+    let quotedRate = quotedRateRaw ?? (pricePerGram ? pricePerGram * 10 : 0)
+
     if (totalGross != null && totalGross > 0) {
-      gstAmount = gstAmount ?? Math.round(totalGross * (3 / 103) * 100) / 100
-      netRevenue = netRevenue ?? Math.round((totalGross - (gstAmount || 0)) * 100) / 100
+      gstAmount = Math.round(totalGross * (3 / 103) * 100) / 100
+      netRevenue = Math.round((totalGross - gstAmount) * 100) / 100
       grossRevenue = totalGross
-      tcsAmount = tcsAmount ?? Math.round((netRevenue ?? 0) * 0.001 * 100) / 100
-      if (grams && !quotedRateRaw && !pricePerGram) quotedRate = Math.round(((netRevenue ?? 0) / grams) * 10) / 10
-    } else if (netRevenue != null && grams) {
-      gstAmount = gstAmount ?? Math.round(netRevenue * 0.03 * 100) / 100
-      tcsAmount = tcsAmount ?? Math.round(netRevenue * 0.001 * 100) / 100
-      grossRevenue = grossRevenue ?? netRevenue + (gstAmount || 0) + (tcsAmount || 0)
-      if (!quotedRateRaw) quotedRate = Math.round((netRevenue / grams) * 10) / 10
+      if (!quotedRateRaw && !pricePerGram && grams) {
+        quotedRate = Math.round((netRevenue / grams) * 10 * 100) / 100
+      }
     } else if (grams && quotedRate) {
-      netRevenue = netRevenue ?? Math.round((grams * quotedRate) / 10 * 100) / 100
-      gstAmount = gstAmount ?? Math.round(netRevenue * 0.03 * 100) / 100
-      tcsAmount = tcsAmount ?? Math.round(netRevenue * 0.001 * 100) / 100
-      grossRevenue = grossRevenue ?? netRevenue + gstAmount + tcsAmount
+      netRevenue = Math.round(grams * quotedRate / 10 * 100) / 100
+      gstAmount = Math.round(netRevenue * 0.03 * 100) / 100
+      grossRevenue = Math.round((netRevenue + gstAmount) * 100) / 100
     }
+
+    const tcsAmount = netRevenue != null ? Math.round(netRevenue * 0.001 * 100) / 100 : 0
 
     if (!clientName || !orderDate || !grams) {
       skipped += 1
@@ -239,6 +236,10 @@ export async function buildOrderPayloads(
     const hashBuffer = await crypto.subtle.digest('SHA-256', data as ArrayBuffer)
     const hashArray = Array.from(new Uint8Array(hashBuffer))
     const importHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+
+    const city = extractCity(symbol)
+    const salesPerson = salesPersonFor(symbol)
+    const rawData = { ...row, ...(salesPerson ? { sales_person: salesPerson } : {}) }
 
     const key = compositeKey(orderDate, orderTime, clientName)
     payloads.push({
@@ -260,12 +261,12 @@ export async function buildOrderPayloads(
         tcs_amount: tcsAmount,
         gross_revenue: grossRevenue,
         order_source: 'offline',
-        city: null,
-        trade_status: 'pending_supplier_booking',
+        city: city || null,
+        trade_status: 'Online',
         remarks: `Imported from sheet: ${options.fileName}`,
         created_by: options.userId,
         import_hash: importHash,
-        raw_data: row,
+        raw_data: rawData,
       },
     })
   }

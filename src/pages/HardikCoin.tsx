@@ -186,14 +186,14 @@ export default function HardikCoinPage() {
     client_name: '', order_date: new Date().toISOString().split('T')[0],
     order_time: '', delivery_date: '', product_symbol: '', purity: '',
     grams: '', quantity: '1', quoted_rate: '', making_charges: '0',
-    tcs_amount: '0', city: '',
+    city: '',
   })
 
   const resetNewOrderForm = () => setNewOrderForm({
     client_name: '', order_date: new Date().toISOString().split('T')[0],
     order_time: '', delivery_date: '', product_symbol: '', purity: '',
     grams: '', quantity: '1', quoted_rate: '', making_charges: '0',
-    tcs_amount: '0', city: '',
+    city: '',
   })
 
   const sendOrderNotifications = useCallback(async (count: number, detail: string, source: string) => {
@@ -221,12 +221,15 @@ export default function HardikCoinPage() {
       const grams = parseFloat(newOrderForm.grams) || 0
       const quoted_rate = parseFloat(newOrderForm.quoted_rate) || 0
       const making_charges = parseFloat(newOrderForm.making_charges) || 0
-      const tcs_amount = parseFloat(newOrderForm.tcs_amount) || 0
       const quantity = parseInt(newOrderForm.quantity, 10) || 1
 
-      const net_revenue = Math.round(grams * quoted_rate * 100) / 100
+      const net_revenue = Math.round(grams * quoted_rate / 10 * 100) / 100
       const gst_amount = Math.round(net_revenue * 0.03 * 100) / 100
-      const gross_revenue = Math.round((net_revenue + gst_amount + tcs_amount) * 100) / 100
+      const tcs_amount = Math.round(net_revenue * 0.001 * 100) / 100
+      const gross_revenue = Math.round((net_revenue + gst_amount) * 100) / 100
+
+      const city = newOrderForm.city || extractCity(newOrderForm.product_symbol) || null
+      const salesPerson = city ? salesPersonFor(city) : salesPersonFor(newOrderForm.product_symbol)
 
       const { error } = await supabase.from('client_orders').insert({
         client_name: newOrderForm.client_name,
@@ -237,9 +240,10 @@ export default function HardikCoinPage() {
         purity: newOrderForm.purity || null,
         grams, quantity, quoted_rate, making_charges,
         net_revenue, gst_amount, tcs_amount, gross_revenue,
-        city: newOrderForm.city || null,
-        trade_status: 'pending_supplier_booking',
+        city,
+        trade_status: 'Online',
         order_source: 'offline',
+        raw_data: salesPerson ? { sales_person: salesPerson } : {},
         created_by: user?.id ?? null,
       })
       if (error) throw error
@@ -1236,8 +1240,7 @@ export default function HardikCoinPage() {
                   { label: 'Quantity Sold', key: 'quantity', required: false, type: 'number', placeholder: '1' },
                   { label: 'Quoted Rate (₹/10g) *', key: 'quoted_rate', required: true, type: 'number', placeholder: '' },
                   { label: 'Making Charges (₹)', key: 'making_charges', required: false, type: 'number', placeholder: '0' },
-                  { label: 'TCS (₹)', key: 'tcs_amount', required: false, type: 'number', placeholder: '0' },
-                  { label: 'City', key: 'city', required: false, type: 'text', placeholder: '' },
+                  { label: 'City', key: 'city', required: false, type: 'text', placeholder: 'Auto-filled from Symbol' },
                 ] as const).map(({ label, key, required, type, placeholder }) => (
                   <div key={key}>
                     <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>

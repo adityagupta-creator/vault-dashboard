@@ -1,16 +1,4 @@
-/**
- * Utils for Hardik Coin workflow – mirrors Python script logic.
- * City & salesperson derived from Symbol (product_symbol) first token.
- *
- * Formulas (matches Python F1_FORMULAS):
- *   Net Purchase_2 = Quantity Bought * (Trade Booked + Making Charges)
- *     → (grams/10) * supplier_rate + supplier_making_charges
- *   GST_2 = Net Purchase_2 * 0.03
- *   Gross Purchase = Net Purchase_2 + GST_2
- *   Trade Margin = Net Revenue_1 - Net Purchase_2
- *   Trade Margin % = Trade Margin / Net Revenue_1
- */
-export const PURCHASE_GST_RATE = 0.03 // GST_2 = Net Purchase * 3%
+export const PURCHASE_GST_RATE = 0.03
 
 const CITY_CODE_TO_NAME: Record<string, string> = {
   PJB: 'Mohali',
@@ -20,17 +8,23 @@ const CITY_CODE_TO_NAME: Record<string, string> = {
   AGRA: 'Agra',
   LKO: 'Lucknow',
   MUM: 'Mumbai',
+  AMR: 'Amritsar',
+  LDH: 'Ludhiana',
 }
 
-const CITY_CODE_TO_SALESPERSON: Record<string, string> = {
-  PJB: 'Amritanshu',
-  KOL: 'Sanjib',
-  BHB: 'Sanjib',
-  DEL: 'Narendra',
-  AGRA: 'Narendra',
-  LKO: 'Narendra',
-  MUM: '',
+const CITY_NAME_TO_SALESPERSON: Record<string, string> = {
+  Delhi: 'Narendra',
+  Agra: 'Narendra',
+  Lucknow: 'Narendra',
+  Kolkata: 'Sanjib',
+  Bhubaneswar: 'Sanjib',
+  Mohali: 'Amritanshu',
+  Amritsar: 'Amritanshu',
+  Ludhiana: 'Amritanshu',
+  Mumbai: '',
 }
+
+const KNOWN_CITY_NAMES = Object.values(CITY_CODE_TO_NAME).filter(Boolean)
 
 export function extractCityCode(symbol: string | null | undefined): string {
   const s = (symbol ?? '').toString().trim()
@@ -39,13 +33,23 @@ export function extractCityCode(symbol: string | null | undefined): string {
 }
 
 export function extractCity(symbol: string | null | undefined): string {
-  const code = extractCityCode(symbol)
-  return CITY_CODE_TO_NAME[code] ?? ''
+  const s = (symbol ?? '').toString().trim()
+  if (!s) return ''
+  const code = s.split(/\s+/)[0]?.toUpperCase() ?? ''
+  if (CITY_CODE_TO_NAME[code]) return CITY_CODE_TO_NAME[code]
+  const lower = s.toLowerCase()
+  for (const city of KNOWN_CITY_NAMES) {
+    if (lower.includes(city.toLowerCase())) return city
+  }
+  return ''
 }
 
-export function salesPersonFor(symbol: string | null | undefined): string {
-  const code = extractCityCode(symbol)
-  return CITY_CODE_TO_SALESPERSON[code] ?? ''
+export function salesPersonFor(symbolOrCity: string | null | undefined): string {
+  const city = CITY_CODE_TO_NAME[extractCityCode(symbolOrCity)]
+    ? extractCity(symbolOrCity)
+    : (symbolOrCity ?? '').toString().trim()
+  const resolved = KNOWN_CITY_NAMES.find((c) => c.toLowerCase() === city.toLowerCase()) ?? extractCity(symbolOrCity)
+  return CITY_NAME_TO_SALESPERSON[resolved] ?? ''
 }
 
 /** Format date as dd.mm.yyyy for Hardik sheet */
