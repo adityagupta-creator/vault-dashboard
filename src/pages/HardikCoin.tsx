@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
-import { Search, RefreshCw, Plus, Trash2, MoreVertical, Download, Upload, ChevronsDown, X } from 'lucide-react'
+import { Search, RefreshCw, Plus, Trash2, MoreVertical, Download, Upload, ChevronsDown, X, ChevronDown } from 'lucide-react'
 import {
   parseSheetBuffer,
   validateRequiredColumns,
@@ -155,6 +155,8 @@ export default function HardikCoinPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const tableContainerRef = useRef<HTMLDivElement | null>(null)
   const [showScrollBottom, setShowScrollBottom] = useState(true)
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const exportMenuRef = useRef<HTMLDivElement | null>(null)
 
   const handleTableScroll = useCallback(() => {
     const el = tableContainerRef.current
@@ -166,6 +168,17 @@ export default function HardikCoinPage() {
   const scrollToBottom = useCallback(() => {
     tableContainerRef.current?.scrollTo({ top: tableContainerRef.current.scrollHeight, behavior: 'smooth' })
   }, [])
+
+  useEffect(() => {
+    if (!showExportMenu) return
+    const handler = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showExportMenu])
 
   const [showNewOrderModal, setShowNewOrderModal] = useState(false)
   const [newOrderSaving, setNewOrderSaving] = useState(false)
@@ -739,7 +752,7 @@ export default function HardikCoinPage() {
     }
   }
 
-  const exportToExcel = () => {
+  const exportData = (format: 'xlsx' | 'xls' | 'csv') => {
     const rows = filtered.map((row, idx) => {
       const obj: Record<string, string | number> = {}
       allCols.forEach((col) => {
@@ -750,8 +763,10 @@ export default function HardikCoinPage() {
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Hardik Coin')
-    const filename = `HardikCoin_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.xlsx`
-    XLSX.writeFile(wb, filename)
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')
+    const bookType = format === 'xls' ? 'biff8' : format
+    XLSX.writeFile(wb, `HardikCoin_${stamp}.${format}`, { bookType: bookType as XLSX.BookType })
+    setShowExportMenu(false)
   }
 
   const renderCell = (col: { id: string; header: string; editable: boolean }, row: Row, idx: number) => {
@@ -963,7 +978,7 @@ export default function HardikCoinPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv,.xlsx,.xls"
+            accept=".csv,.xlsx,.xls,.html"
             className="hidden"
             onChange={handleFileUpload}
           />
@@ -983,13 +998,27 @@ export default function HardikCoinPage() {
           >
             <Plus className="w-4 h-4 mr-1" />New Order
           </button>
-          <button
-            onClick={exportToExcel}
-            disabled={filtered.length === 0}
-            className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors disabled:opacity-60"
-          >
-            <Download className="w-4 h-4 mr-1" />Export XLS
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              type="button"
+              onClick={() => setShowExportMenu((p) => !p)}
+              disabled={filtered.length === 0}
+              className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors disabled:opacity-60"
+            >
+              <Download className="w-4 h-4 mr-1" />Export
+              <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded shadow-lg z-30 min-w-[110px]">
+                {([['xlsx', 'Excel (.xlsx)'], ['xls', 'Excel (.xls)'], ['csv', 'CSV (.csv)']] as const).map(([fmt, label]) => (
+                  <button key={fmt} type="button" onClick={() => exportData(fmt)}
+                    className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700 transition-colors first:rounded-t last:rounded-b">
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={fetchData}
             className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors"

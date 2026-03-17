@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { formatDate, formatRupeeWithSymbol, formatNumberIndian } from '../lib/hardikUtils'
-import { Download, Search, ChevronsDown } from 'lucide-react'
+import { Download, Search, ChevronsDown, ChevronDown } from 'lucide-react'
 import { useRealtimeTable } from '../hooks/useRealtimeSync'
 import { useLatestImportIds } from '../hooks/useAppSettings'
 import type { ClientOrder } from '../types'
@@ -14,6 +14,19 @@ export default function ClientOrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const tableContainerRef = useRef<HTMLDivElement | null>(null)
   const [showScrollBottom, setShowScrollBottom] = useState(true)
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const exportMenuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!showExportMenu) return
+    const handler = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showExportMenu])
 
   const handleTableScroll = useCallback(() => {
     const el = tableContainerRef.current
@@ -32,7 +45,7 @@ export default function ClientOrdersPage() {
     order.product_symbol?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const exportToExcel = () => {
+  const exportData = (format: 'xlsx' | 'xls' | 'csv') => {
     const rows = filteredOrders.map((order, idx) => ({
       'Sr.No': idx + 1,
       'Date': formatDate(order.order_date) || '',
@@ -52,8 +65,10 @@ export default function ClientOrdersPage() {
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Meghna - Client Orders')
-    const filename = `ClientOrders_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.xlsx`
-    XLSX.writeFile(wb, filename)
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')
+    const bookType = format === 'xls' ? 'biff8' : format
+    XLSX.writeFile(wb, `ClientOrders_${stamp}.${format}`, { bookType: bookType as XLSX.BookType })
+    setShowExportMenu(false)
   }
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div></div>
@@ -65,14 +80,27 @@ export default function ClientOrdersPage() {
           <h1 className="page-excel-title">Meghna - Client Orders</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={exportToExcel}
-            disabled={filteredOrders.length === 0}
-            className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors disabled:opacity-60"
-          >
-            <Download className="w-4 h-4 mr-1" />
-            Export XLS
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              type="button"
+              onClick={() => setShowExportMenu((p) => !p)}
+              disabled={filteredOrders.length === 0}
+              className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors disabled:opacity-60"
+            >
+              <Download className="w-4 h-4 mr-1" />Export
+              <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded shadow-lg z-30 min-w-[110px]">
+                {([['xlsx', 'Excel (.xlsx)'], ['xls', 'Excel (.xls)'], ['csv', 'CSV (.csv)']] as const).map(([fmt, label]) => (
+                  <button key={fmt} type="button" onClick={() => exportData(fmt)}
+                    className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700 transition-colors first:rounded-t last:rounded-b">
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
