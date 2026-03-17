@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '../api/supabase'
 import { withTimeout } from '../api/withTimeout'
 import { useAuthStore } from '../store/auth'
-import { Search, RefreshCw, Truck, Plus, Trash2, MoreVertical, Columns, Download } from 'lucide-react'
+import { Search, RefreshCw, Plus, Trash2, MoreVertical, Columns, Download } from 'lucide-react'
 import { extractCity, salesPersonFor } from '../lib/hardikUtils'
 import { recalcRow } from '../lib/hardikCalculations'
 import {
@@ -917,12 +916,6 @@ export default function HardikCoinPage() {
           >
             <Download className="w-4 h-4 mr-1" />Export XLS
           </button>
-          <Link
-            to="/supplier-purchase"
-            className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors"
-          >
-            <Truck className="w-4 h-4 mr-1" />Supplier
-          </Link>
           <button
             onClick={fetchData}
             className="inline-flex items-center px-2 py-1 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded transition-colors"
