@@ -262,7 +262,7 @@ export async function buildOrderPayloads(
         gross_revenue: grossRevenue,
         order_source: 'offline',
         city: city || null,
-        trade_status: 'Online',
+        trade_status: 'pending_supplier_booking',
         remarks: `Imported from sheet: ${options.fileName}`,
         created_by: options.userId,
         import_hash: importHash,

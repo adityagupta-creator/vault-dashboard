@@ -241,7 +241,7 @@ export default function HardikCoinPage() {
         grams, quantity, quoted_rate, making_charges,
         net_revenue, gst_amount, tcs_amount, gross_revenue,
         city,
-        trade_status: 'Online',
+        trade_status: 'pending_supplier_booking',
         order_source: 'offline',
         raw_data: salesPerson ? { sales_person: salesPerson } : {},
         created_by: user?.id ?? null,
