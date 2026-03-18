@@ -203,27 +203,26 @@ export async function buildOrderPayloads(
     const totalGross = toNumber(normalizedRow.grossrevenue) ?? toNumber(normalizedRow.total)
     const pricePerGram = toNumber((normalizedRow as Record<string, unknown>)['1gmprice'])
 
-    // Quoted Rate is stored as per 10g
     const quotedRateRaw = toNumber(normalizedRow.quotedrate)
     let netRevenue: number | null = null
     let gstAmount: number | null = null
     let grossRevenue: number | null = null
-    let quotedRate = quotedRateRaw ?? (pricePerGram ? pricePerGram * 10 : 0)
+    let quotedRate = quotedRateRaw ?? (pricePerGram ?? 0)
 
     if (totalGross != null && totalGross > 0) {
       gstAmount = Math.round(totalGross * (3 / 103) * 100) / 100
       netRevenue = Math.round((totalGross - gstAmount) * 100) / 100
       grossRevenue = totalGross
       if (!quotedRateRaw && !pricePerGram && grams) {
-        quotedRate = Math.round((netRevenue / grams) * 10 * 100) / 100
+        quotedRate = Math.round((netRevenue / grams) * 100) / 100
       }
     } else if (grams && quotedRate) {
-      netRevenue = Math.round(grams * quotedRate / 10 * 100) / 100
+      netRevenue = Math.round(grams * quotedRate * 100) / 100
       gstAmount = Math.round(netRevenue * 0.03 * 100) / 100
       grossRevenue = Math.round((netRevenue + gstAmount) * 100) / 100
     }
 
-    const tcsAmount = netRevenue != null ? Math.round(netRevenue * 0.001 * 100) / 100 : 0
+    const tcsAmount = null
 
     if (!clientName || !orderDate || !grams) {
       skipped += 1

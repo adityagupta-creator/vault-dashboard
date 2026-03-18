@@ -1,17 +1,16 @@
 /**
  * Hardik Coin calculation module.
  *
- * All rates (Quoted Rate, Trade Booked) are stored as per 10 grams,
- * matching the Indian gold trading convention.
+ * All rates (Quoted Rate, Trade Booked) are stored as per gram.
  *
  * Sales:
- *   Net Revenue_1 = Grams × (Quoted Rate / 10)
+ *   Net Revenue_1 = Grams × Quoted Rate
  *   GST_1         = Net Revenue_1 × 3%
- *   TCS           = Net Revenue_1 × 0.1%
+ *   TCS           = manually entered (not auto-calculated)
  *   Gross Revenue = Net Revenue_1 + GST_1
  *
  * Purchase:
- *   Net Purchase_2 = Grams × (Trade Booked / 10)
+ *   Net Purchase_2 = Grams × Trade Booked
  *   GST_2          = Net Purchase_2 × 3%
  *   Gross Purchase = Net Purchase_2 + GST_2
  *   Trade Margin   = Net Revenue_1 − Net Purchase_2
@@ -21,7 +20,6 @@
 import type { ClientOrder, SupplierPurchase } from '../types'
 
 const GST_RATE = 0.03
-const TCS_RATE = 0.001
 
 function round2(v: number): number {
   return Math.round(v * 100) / 100
@@ -38,15 +36,13 @@ export function recalcSales(order: ClientOrder): Partial<ClientOrder> {
   const quotedRate = toNum(order.quoted_rate)
   const quantitySold = toNum(order.quantity) || 1
 
-  const net_revenue = round2(grams * quotedRate / 10)
+  const net_revenue = round2(grams * quotedRate)
   const gst_amount = round2(net_revenue * GST_RATE)
-  const tcs_amount = round2(net_revenue * TCS_RATE)
   const gross_revenue = round2(net_revenue + gst_amount)
 
   return {
     net_revenue,
     gst_amount,
-    tcs_amount,
     gross_revenue,
     quantity: quantitySold,
   }
@@ -60,7 +56,7 @@ export function recalcPurchase(
   const grams = toNum(order.grams)
   const tradeBooked = toNum((purchase as SupplierPurchase).supplier_rate ?? 0)
 
-  const net_purchase = round2(grams * tradeBooked / 10)
+  const net_purchase = round2(grams * tradeBooked)
   const gst_2 = round2(net_purchase * GST_RATE)
   const gross_purchase = round2(net_purchase + gst_2)
 

@@ -27,7 +27,7 @@ export interface ClientOrder {
   making_charges: number
   net_revenue: number | null
   gst_amount: number
-  tcs_amount: number
+  tcs_amount: number | null
   gross_revenue: number | null
   city: string | null
   trade_status: string

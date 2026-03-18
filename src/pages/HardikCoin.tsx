@@ -223,9 +223,8 @@ export default function HardikCoinPage() {
       const making_charges = parseFloat(newOrderForm.making_charges) || 0
       const quantity = parseInt(newOrderForm.quantity, 10) || 1
 
-      const net_revenue = Math.round(grams * quoted_rate / 10 * 100) / 100
+      const net_revenue = Math.round(grams * quoted_rate * 100) / 100
       const gst_amount = Math.round(net_revenue * 0.03 * 100) / 100
-      const tcs_amount = Math.round(net_revenue * 0.001 * 100) / 100
       const gross_revenue = Math.round((net_revenue + gst_amount) * 100) / 100
 
       const city = newOrderForm.city || extractCity(newOrderForm.product_symbol) || null
@@ -239,7 +238,7 @@ export default function HardikCoinPage() {
         product_symbol: newOrderForm.product_symbol || null,
         purity: newOrderForm.purity || null,
         grams, quantity, quoted_rate, making_charges,
-        net_revenue, gst_amount, tcs_amount, gross_revenue,
+        net_revenue, gst_amount, tcs_amount: null, gross_revenue,
         city,
         trade_status: 'pending_supplier_booking',
         order_source: 'offline',
@@ -664,7 +663,7 @@ export default function HardikCoinPage() {
       making_charges: 0,
       net_revenue: 0,
       gst_amount: 0,
-      tcs_amount: 0,
+      tcs_amount: null,
       gross_revenue: 0,
       city: null,
       trade_status: 'pending_supplier_booking',
@@ -887,7 +886,7 @@ export default function HardikCoinPage() {
         case 'quantity_bought':
           return `${order.grams ?? order.quantity ?? 0}g`
         case 'trade_booked':
-          return purchase ? `${formatRupeeWithSymbol(purchase.supplier_rate ?? 0, 2)}/10g` : 'Click to add'
+          return purchase ? `${formatRupeeWithSymbol(purchase.supplier_rate ?? 0, 2)}/g` : 'Click to add'
         case 'making_charges':
           return purchase ? formatRupeeWithSymbol(purchase.supplier_making_charges ?? 0, 2) : 'Click to add'
         case 'net_purchase':
@@ -1238,7 +1237,7 @@ export default function HardikCoinPage() {
                   { label: 'Purity', key: 'purity', required: false, type: 'text', placeholder: 'e.g., 24K, 22K' },
                   { label: 'Grams *', key: 'grams', required: true, type: 'number', placeholder: '' },
                   { label: 'Quantity Sold', key: 'quantity', required: false, type: 'number', placeholder: '1' },
-                  { label: 'Quoted Rate (₹/10g) *', key: 'quoted_rate', required: true, type: 'number', placeholder: '' },
+                  { label: 'Quoted Rate (₹/g) *', key: 'quoted_rate', required: true, type: 'number', placeholder: '' },
                   { label: 'Making Charges (₹)', key: 'making_charges', required: false, type: 'number', placeholder: '0' },
                   { label: 'City', key: 'city', required: false, type: 'text', placeholder: 'Auto-filled from Symbol' },
                 ] as const).map(({ label, key, required, type, placeholder }) => (

@@ -3,6 +3,7 @@ import { formatDate, formatRupeeWithSymbol, formatNumberIndian } from '../lib/ha
 import { Download, Search, ChevronsDown, ChevronDown } from 'lucide-react'
 import { useRealtimeTable } from '../hooks/useRealtimeSync'
 import { useLatestImportIds } from '../hooks/useAppSettings'
+import { supabase } from '../api/supabase'
 import type { ClientOrder } from '../types'
 import * as XLSX from 'xlsx'
 
@@ -16,6 +17,15 @@ export default function ClientOrdersPage() {
   const [showScrollBottom, setShowScrollBottom] = useState(true)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const exportMenuRef = useRef<HTMLDivElement | null>(null)
+  const [editingTcs, setEditingTcs] = useState<{ orderId: string; value: string } | null>(null)
+
+  const saveTcs = useCallback(async () => {
+    if (!editingTcs) return
+    const n = parseFloat(editingTcs.value.replace(/,/g, ''))
+    const tcs_amount = isNaN(n) ? null : Math.round(n * 100) / 100
+    await supabase.from('client_orders').update({ tcs_amount }).eq('id', editingTcs.orderId)
+    setEditingTcs(null)
+  }, [editingTcs])
 
   useEffect(() => {
     if (!showExportMenu) return
@@ -155,7 +165,28 @@ export default function ClientOrdersPage() {
                   <td className="text-slate-900 text-right min-w-[5.5rem]">{formatRupeeWithSymbol(order.quoted_rate, 2) || '-'}</td>
                   <td className="text-slate-900 text-right min-w-[5.5rem]">{formatRupeeWithSymbol(nr, 2) || '-'}</td>
                   <td className="text-slate-600 text-right min-w-[5.5rem]">{formatRupeeWithSymbol(order.gst_amount, 2) || '-'}</td>
-                  <td className="text-slate-600 text-right min-w-[5.5rem]">{formatRupeeWithSymbol(order.tcs_amount, 2) || '-'}</td>
+                  <td className="text-slate-600 text-right min-w-[5.5rem]">
+                    {editingTcs?.orderId === order.id ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        autoFocus
+                        className="w-full text-right text-xs px-1 py-0 border border-amber-400 rounded outline-none focus:ring-1 focus:ring-amber-300"
+                        value={editingTcs.value}
+                        onChange={(e) => setEditingTcs({ orderId: order.id, value: e.target.value })}
+                        onBlur={saveTcs}
+                        onKeyDown={(e) => { if (e.key === 'Enter') saveTcs(); if (e.key === 'Escape') setEditingTcs(null); }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className="w-full text-right text-xs hover:bg-amber-50 rounded px-1 py-0 transition-colors cursor-pointer"
+                        onClick={() => setEditingTcs({ orderId: order.id, value: order.tcs_amount != null ? String(order.tcs_amount) : '' })}
+                      >
+                        {order.tcs_amount != null ? formatRupeeWithSymbol(order.tcs_amount, 2) : '-'}
+                      </button>
+                    )}
+                  </td>
                   <td className="text-slate-900 text-right min-w-[9rem] whitespace-nowrap">{formatRupeeWithSymbol(order.gross_revenue, 2) || '-'}</td>
                 </tr>
               )})}
