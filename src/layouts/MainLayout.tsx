@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/auth'
 import { usePermissionsStore } from '../store/permissions'
 import { 
   LayoutDashboard, ShoppingCart, Archive, FileSpreadsheet,
-  LogOut, Menu, X, PanelLeftClose, PanelLeftOpen, Settings, Shield
+  LogOut, Menu, X, PanelLeftClose, PanelLeftOpen, Settings, Shield, Loader2
 } from 'lucide-react'
 import { useState, useMemo } from 'react'
 
@@ -18,15 +18,20 @@ const allNavigation = [
 
 export default function MainLayout() {
   const { user, signOut } = useAuthStore()
-  const hasAccess = usePermissionsStore((s) => s.hasAccess)
+  const allowedSlugs = usePermissionsStore((s) => s.allowedSlugs)
+  const permsFetched = usePermissionsStore((s) => s.fetched)
+  const permsLoading = usePermissionsStore((s) => s.loading)
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
+  const sidebarReady = permsFetched && !permsLoading
+
   const navigation = useMemo(() => {
     if (user?.role === 'admin') return allNavigation
-    return allNavigation.filter((item) => hasAccess(item.slug))
-  }, [user, hasAccess])
+    if (!sidebarReady) return []
+    return allNavigation.filter((item) => allowedSlugs.includes(item.slug))
+  }, [user, allowedSlugs, sidebarReady])
 
   const handleSignOut = async () => {
     await signOut()
@@ -50,7 +55,11 @@ export default function MainLayout() {
                 </button>
               </div>
               <nav className="flex-1 p-4 space-y-1">
-                {navigation.map((item) => (
+                {!sidebarReady ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+                  </div>
+                ) : navigation.map((item) => (
                   <NavLink
                     key={item.name}
                     to={item.href}
@@ -81,7 +90,11 @@ export default function MainLayout() {
           )}
         </div>
         <nav className="flex-1 px-2 py-1.5 space-y-0.5 overflow-y-auto">
-          {navigation.map((item) => (
+          {!sidebarReady && user?.role !== 'admin' ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+            </div>
+          ) : navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}

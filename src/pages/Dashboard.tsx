@@ -33,7 +33,7 @@ export default function DashboardPage() {
       setErrorMessage(null)
 
       try {
-        const storedLastSeen = localStorage.getItem(LAST_SEEN_KEY)
+        const storedLastSeen = sessionStorage.getItem(LAST_SEEN_KEY)
         const since = storedLastSeen ?? new Date(Date.now() - CHECK_WINDOW_HOURS * 60 * 60 * 1000).toISOString()
         const label = storedLastSeen ? 'since your last check' : `in the last ${CHECK_WINDOW_HOURS} hours`
         if (isMounted) setWindowLabel(label)
@@ -73,7 +73,7 @@ export default function DashboardPage() {
 
   const handleDismissPopup = () => {
     const now = new Date().toISOString()
-    localStorage.setItem(LAST_SEEN_KEY, now)
+    sessionStorage.setItem(LAST_SEEN_KEY, now)
     setShowPopup(false)
     setStatus('none')
     setNewOrdersCount(0)

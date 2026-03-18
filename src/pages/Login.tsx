@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
+import { usePermissionsStore } from '../store/permissions'
 import { Shield } from 'lucide-react'
 
 export default function LoginPage() {
@@ -9,6 +10,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { signIn } = useAuthStore()
+  const { fetchPermissions } = usePermissionsStore()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -17,6 +19,7 @@ export default function LoginPage() {
     setLoading(true)
     const result = await signIn(email, password)
     if (result.success) {
+      await fetchPermissions()
       navigate('/')
     } else {
       setError(result.error || 'Login failed')

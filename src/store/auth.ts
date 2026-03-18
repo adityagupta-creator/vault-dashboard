@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '../api/supabase'
 import type { Profile, UserRole } from '../types'
 
@@ -78,6 +78,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'safegold-auth',
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({ user: state.user }),
       onRehydrateStorage: () => (state) => {
         if (state?.user) {

@@ -4,17 +4,16 @@ import { useAuthStore } from './auth'
 import type { AppPage } from '../types'
 
 interface PermissionsState {
-  allowedSlugs: Set<string>
+  allowedSlugs: string[]
   allPages: AppPage[]
   loading: boolean
   fetched: boolean
   fetchPermissions: () => Promise<void>
-  hasAccess: (slug: string) => boolean
   reset: () => void
 }
 
-export const usePermissionsStore = create<PermissionsState>()((set, get) => ({
-  allowedSlugs: new Set<string>(),
+export const usePermissionsStore = create<PermissionsState>()((set) => ({
+  allowedSlugs: [],
   allPages: [],
   loading: false,
   fetched: false,
@@ -22,7 +21,7 @@ export const usePermissionsStore = create<PermissionsState>()((set, get) => ({
   fetchPermissions: async () => {
     const user = useAuthStore.getState().user
     if (!user) {
-      set({ allowedSlugs: new Set(), allPages: [], loading: false, fetched: true })
+      set({ allowedSlugs: [], allPages: [], loading: false, fetched: true })
       return
     }
 
@@ -37,7 +36,7 @@ export const usePermissionsStore = create<PermissionsState>()((set, get) => ({
 
       if (user.role === 'admin') {
         set({
-          allowedSlugs: new Set(allPages.map((p) => p.slug)),
+          allowedSlugs: allPages.map((p) => p.slug),
           allPages,
           loading: false,
           fetched: true,
@@ -51,9 +50,7 @@ export const usePermissionsStore = create<PermissionsState>()((set, get) => ({
         .eq('user_id', user.id)
 
       const allowedPageIds = new Set((perms ?? []).map((p: { page_id: string }) => p.page_id))
-      const allowedSlugs = new Set(
-        allPages.filter((p) => allowedPageIds.has(p.id)).map((p) => p.slug)
-      )
+      const allowedSlugs = allPages.filter((p) => allowedPageIds.has(p.id)).map((p) => p.slug)
 
       set({ allowedSlugs, allPages, loading: false, fetched: true })
     } catch (err) {
@@ -62,15 +59,7 @@ export const usePermissionsStore = create<PermissionsState>()((set, get) => ({
     }
   },
 
-  hasAccess: (slug: string) => {
-    const { allowedSlugs } = get()
-    const user = useAuthStore.getState().user
-    if (!user) return false
-    if (user.role === 'admin') return true
-    return allowedSlugs.has(slug)
-  },
-
-  reset: () => set({ allowedSlugs: new Set(), allPages: [], loading: false, fetched: false }),
+  reset: () => set({ allowedSlugs: [], allPages: [], loading: false, fetched: false }),
 }))
 
 let realtimeSub: ReturnType<typeof supabase.channel> | null = null
