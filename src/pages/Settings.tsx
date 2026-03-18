@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Mail, Plus, Trash2, KeyRound, Eye, EyeOff, Check } from 'lucide-react'
 import { useNotificationEmails } from '../hooks/useAppSettings'
+import { useAuthStore } from '../store/auth'
 import { supabase } from '../api/supabase'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function SettingsPage() {
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin')
   const [emails, { addEmail, removeEmail }, loading] = useNotificationEmails()
   const [newEmail, setNewEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -90,7 +92,7 @@ export default function SettingsPage() {
     <div className="max-w-2xl mx-auto py-6 px-4 space-y-6">
       <h1 className="text-xl font-semibold text-slate-900">Settings</h1>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+      {isAdmin && <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <Mail className="w-5 h-5 text-amber-500" />
@@ -153,7 +155,7 @@ export default function SettingsPage() {
             </ul>
           )}
         </div>
-      </div>
+      </div>}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-5 py-4 border-b border-slate-100">
