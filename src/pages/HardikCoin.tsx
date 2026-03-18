@@ -116,16 +116,7 @@ function setCustomValue(order: ClientOrder, colId: string, value: string): Clien
   return { ...order, raw_data: raw }
 }
 
-const TRADE_STATUS_OPTIONS = [
-  'pending_supplier_booking',
-  'pending_hedge',
-  'pending_payment',
-  'payment_verified',
-  'do_created',
-  'in_delivery',
-  'reconciliation_pending',
-  'closed',
-]
+const TRADE_STATUS_OPTIONS = ['Online', 'Offline']
 
 export default function HardikCoinPage() {
   const { user } = useAuthStore()
@@ -240,7 +231,7 @@ export default function HardikCoinPage() {
         grams, quantity, quoted_rate, making_charges,
         net_revenue, gst_amount, tcs_amount: null, gross_revenue,
         city,
-        trade_status: 'pending_supplier_booking',
+        trade_status: 'Online',
         order_source: 'offline',
         raw_data: salesPerson ? { sales_person: salesPerson } : {},
         created_by: user?.id ?? null,
@@ -491,7 +482,7 @@ export default function HardikCoinPage() {
             alert('Failed to create purchase')
             return
           }
-          await supabase.from('client_orders').update({ trade_status: 'pending_hedge' }).eq('id', order.id)
+          await supabase.from('client_orders').update({ trade_status: 'Online' }).eq('id', order.id)
         }
       }
 
@@ -613,7 +604,7 @@ export default function HardikCoinPage() {
             const { error } = await supabase.from('supplier_purchases').insert(insertPayload).select('*').single()
             if (error) { console.error(error); alert('Failed to create purchase') }
             else {
-              await supabase.from('client_orders').update({ trade_status: 'pending_hedge', ...orderUpdate }).eq('id', order.id)
+              await supabase.from('client_orders').update({ trade_status: 'Online', ...orderUpdate }).eq('id', order.id)
             }
           }
         } else {
@@ -637,7 +628,7 @@ export default function HardikCoinPage() {
             const { error } = await supabase.from('supplier_purchases').insert(insertPayload).select('*').single()
             if (error) { console.error(error); alert('Failed to create purchase') }
             else {
-              await supabase.from('client_orders').update({ trade_status: 'pending_hedge', ...orderUpdate }).eq('id', order.id)
+              await supabase.from('client_orders').update({ trade_status: 'Online', ...orderUpdate }).eq('id', order.id)
             }
           }
         }
@@ -671,7 +662,7 @@ export default function HardikCoinPage() {
       tcs_amount: null,
       gross_revenue: 0,
       city: null,
-      trade_status: 'pending_supplier_booking',
+      trade_status: 'Online',
       order_source: 'offline',
       remarks: null,
       created_by: user?.id ?? null,
@@ -832,9 +823,7 @@ export default function HardikCoinPage() {
             className={editInputClass}
           >
             {TRADE_STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s.replace(/_/g, ' ')}
-              </option>
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
         ) : (
@@ -918,7 +907,7 @@ export default function HardikCoinPage() {
         case 'city':
           return order.city || extractCity(order.product_symbol) || '-'
         case 'trade_status':
-          return order.trade_status?.replace(/_/g, ' ') ?? '-'
+          return order.trade_status || 'Online'
         case 'sales_person':
           return getCustomValue(order, 'sales_person') || salesPersonFor(order.product_symbol) || '-'
         default:
