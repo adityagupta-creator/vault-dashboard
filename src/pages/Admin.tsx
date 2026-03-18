@@ -125,28 +125,48 @@ export default function AdminPage() {
       const { data, error } = await supabase.auth.signUp({
         email: newEmail,
         password: newPassword,
-        options: { data: { full_name: newName || newEmail.split('@')[0] } },
+        options: {
+          data: { full_name: newName || newEmail.split('@')[0] },
+        },
       })
       if (error) throw error
       if (!data.user) throw new Error('User creation failed')
 
-      await new Promise((r) => setTimeout(r, 1500))
+      const userId = data.user.id
 
-      const { error: profileErr } = await supabase.from('profiles').upsert({
-        id: data.user.id,
-        email: newEmail,
-        full_name: newName || newEmail.split('@')[0],
-        role: newRole,
-        is_active: true,
-      })
-      if (profileErr) console.warn('Profile upsert note:', profileErr.message)
+      const needsConfirmation = data.user.identities?.length === 0
+      if (needsConfirmation) {
+        throw new Error(
+          'User already exists or email confirmation is enabled. ' +
+          'Go to Supabase → Authentication → Providers → Email → disable "Confirm email" to allow admin user creation.'
+        )
+      }
+
+      let retries = 3
+      let profileCreated = false
+      while (retries > 0 && !profileCreated) {
+        const { error: profileErr } = await supabase.from('profiles').upsert({
+          id: userId,
+          email: newEmail,
+          full_name: newName || newEmail.split('@')[0],
+          role: newRole,
+          is_active: true,
+        })
+        if (!profileErr) {
+          profileCreated = true
+        } else {
+          retries--
+          if (retries > 0) await new Promise((r) => setTimeout(r, 1000))
+          else console.warn('Profile upsert failed:', profileErr.message)
+        }
+      }
 
       if (newRole === 'admin') {
         const { data: allPages } = await supabase.from('app_pages').select('id')
         if (allPages?.length) {
           await supabase.from('user_page_permissions').insert(
             allPages.map((p: { id: string }) => ({
-              user_id: data.user!.id,
+              user_id: userId,
               page_id: p.id,
               granted_by: currentUser?.id ?? null,
             }))

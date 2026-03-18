@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Mail, Plus, Trash2 } from 'lucide-react'
+import { Mail, Plus, Trash2, KeyRound, Eye, EyeOff, Check } from 'lucide-react'
 import { useNotificationEmails } from '../hooks/useAppSettings'
+import { supabase } from '../api/supabase'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -9,6 +10,35 @@ export default function SettingsPage() {
   const [newEmail, setNewEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+
+  const [newPass, setNewPass] = useState('')
+  const [confirmPass, setConfirmPass] = useState('')
+  const [showNew, setShowNew] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [passError, setPassError] = useState<string | null>(null)
+  const [passSuccess, setPassSuccess] = useState(false)
+  const [passLoading, setPassLoading] = useState(false)
+
+  const handleChangePassword = async () => {
+    setPassError(null)
+    setPassSuccess(false)
+    if (!newPass) { setPassError('Please enter a new password.'); return }
+    if (newPass.length < 6) { setPassError('Password must be at least 6 characters.'); return }
+    if (newPass !== confirmPass) { setPassError('Passwords do not match.'); return }
+    setPassLoading(true)
+    try {
+      const { error: err } = await supabase.auth.updateUser({ password: newPass })
+      if (err) throw err
+      setNewPass('')
+      setConfirmPass('')
+      setPassSuccess(true)
+      setTimeout(() => setPassSuccess(false), 4000)
+    } catch (err) {
+      setPassError((err as Error).message)
+    } finally {
+      setPassLoading(false)
+    }
+  }
 
   const handleAdd = async () => {
     const trimmed = newEmail.trim().toLowerCase()
@@ -122,6 +152,71 @@ export default function SettingsPage() {
               ))}
             </ul>
           )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-5 h-5 text-amber-500" />
+            <h2 className="text-base font-semibold text-slate-900">Change Password</h2>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Update your password. We recommend changing it after your first login.
+          </p>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">New Password</label>
+            <div className="relative">
+              <input
+                type={showNew ? 'text' : 'password'}
+                value={newPass}
+                onChange={(e) => { setNewPass(e.target.value); setPassError(null); setPassSuccess(false) }}
+                placeholder="Min 6 characters"
+                className="w-full px-3 py-2 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <button type="button" onClick={() => setShowNew((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Confirm Password</label>
+            <div className="relative">
+              <input
+                type={showConfirm ? 'text' : 'password'}
+                value={confirmPass}
+                onChange={(e) => { setConfirmPass(e.target.value); setPassError(null); setPassSuccess(false) }}
+                placeholder="Re-enter new password"
+                className="w-full px-3 py-2 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword() }}
+              />
+              <button type="button" onClick={() => setShowConfirm((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {passError && <p className="text-sm text-rose-600">{passError}</p>}
+          {passSuccess && (
+            <div className="flex items-center gap-1.5 text-sm text-green-600">
+              <Check className="w-4 h-4" />
+              Password updated successfully.
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleChangePassword}
+            disabled={passLoading || !newPass || !confirmPass}
+            className="inline-flex items-center px-4 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+          >
+            {passLoading ? 'Updating...' : 'Update Password'}
+          </button>
         </div>
       </div>
     </div>
