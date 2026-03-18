@@ -412,7 +412,7 @@ export default function HardikCoinPage() {
           setEditValue(String(order.quoted_rate ?? ''))
           break
         case 'tcs_amount':
-          setEditValue(String(order.tcs_amount ?? ''))
+          setEditValue(order.tcs_amount ? String(order.tcs_amount) : '')
           break
         case 'trade_booked':
           setEditValue(purchase ? String(purchase.supplier_rate ?? '') : '')
@@ -570,16 +570,21 @@ export default function HardikCoinPage() {
         return
       }
       case 'grams':
-      case 'quoted_rate':
-      case 'tcs_amount': {
+      case 'quoted_rate': {
         const n = parseFloat(val.replace(/,/g, ''))
         if (isNaN(n) || n < 0) {
           setEditingCell(null)
           return
         }
         const rounded = Math.round(n * 100) / 100
-        const key = field === 'quoted_rate' ? 'quoted_rate' : field === 'tcs_amount' ? 'tcs_amount' : 'grams'
+        const key = field === 'quoted_rate' ? 'quoted_rate' : 'grams'
         await persistAndRecalc(order, purchase, { [key]: rounded }, null)
+        return
+      }
+      case 'tcs_amount': {
+        const trimmed = val.replace(/,/g, '').trim()
+        const tcs = trimmed === '' ? null : Math.round((parseFloat(trimmed) || 0) * 100) / 100
+        await persistAndRecalc(order, purchase, { tcs_amount: tcs }, null)
         return
       }
       case 'trade_booked':
@@ -725,7 +730,7 @@ export default function HardikCoinPage() {
       case 'quoted_rate': return order.quoted_rate != null ? formatRupeeWithSymbol(order.quoted_rate, 2) : ''
       case 'net_revenue': return order.net_revenue != null ? formatRupeeWithSymbol(order.net_revenue, 2) : ''
       case 'gst_amount': return order.gst_amount != null ? formatRupeeWithSymbol(order.gst_amount, 2) : ''
-      case 'tcs_amount': return order.tcs_amount != null ? formatRupeeWithSymbol(order.tcs_amount, 2) : ''
+      case 'tcs_amount': return order.tcs_amount ? formatRupeeWithSymbol(order.tcs_amount, 2) : ''
       case 'gross_revenue': return order.gross_revenue != null ? formatRupeeWithSymbol(order.gross_revenue, 2) : ''
       case 'quantity_bought': return (order.grams ?? order.quantity ?? 0) as number
       case 'trade_booked': return purchase?.supplier_rate != null ? formatRupeeWithSymbol(purchase.supplier_rate, 2) : ''
@@ -880,7 +885,7 @@ export default function HardikCoinPage() {
         case 'gst_amount':
           return order.gst_amount != null ? formatRupeeWithSymbol(order.gst_amount, 2) : '-'
         case 'tcs_amount':
-          return order.tcs_amount != null ? formatRupeeWithSymbol(order.tcs_amount, 2) : '-'
+          return order.tcs_amount ? formatRupeeWithSymbol(order.tcs_amount, 2) : ''
         case 'gross_revenue':
           return order.gross_revenue != null ? formatRupeeWithSymbol(order.gross_revenue, 2) : '-'
         case 'quantity_bought':

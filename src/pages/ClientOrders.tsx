@@ -69,7 +69,7 @@ export default function ClientOrdersPage() {
       'Quoted Rate': order.quoted_rate != null ? formatRupeeWithSymbol(order.quoted_rate, 2) : '',
       'Net Revenue_1': order.net_revenue != null ? formatRupeeWithSymbol(order.net_revenue, 2) : '',
       'GST_1': order.gst_amount != null ? formatRupeeWithSymbol(order.gst_amount, 2) : '',
-      'TCS': order.tcs_amount != null ? formatRupeeWithSymbol(order.tcs_amount, 2) : '',
+      'TCS': order.tcs_amount ? formatRupeeWithSymbol(order.tcs_amount, 2) : '',
       'Gross Revenue': order.gross_revenue != null ? formatRupeeWithSymbol(order.gross_revenue, 2) : '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
@@ -181,9 +181,9 @@ export default function ClientOrdersPage() {
                       <button
                         type="button"
                         className="w-full text-right text-xs hover:bg-amber-50 rounded px-1 py-0 transition-colors cursor-pointer"
-                        onClick={() => setEditingTcs({ orderId: order.id, value: order.tcs_amount != null ? String(order.tcs_amount) : '' })}
+                        onClick={() => setEditingTcs({ orderId: order.id, value: order.tcs_amount ? String(order.tcs_amount) : '' })}
                       >
-                        {order.tcs_amount != null ? formatRupeeWithSymbol(order.tcs_amount, 2) : '-'}
+                        {order.tcs_amount ? formatRupeeWithSymbol(order.tcs_amount, 2) : ''}
                       </button>
                     )}
                   </td>
