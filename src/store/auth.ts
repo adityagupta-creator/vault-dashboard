@@ -29,12 +29,24 @@ export const useAuthStore = create<AuthState>()(
           if (authError) throw authError
           if (!authData.user) throw new Error('No user returned')
           
-          const { data: profile, error: profileError } = await supabase
+          let { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', authData.user.id)
-            .single()
-          if (profileError) throw profileError
+            .maybeSingle()
+
+          if (!profile) {
+            const { data: created } = await supabase.from('profiles').upsert({
+              id: authData.user.id,
+              email: authData.user.email,
+              full_name: authData.user.user_metadata?.full_name || authData.user.email?.split('@')[0] || '',
+              role: 'user',
+              is_active: true,
+            }).select('*').single()
+            profile = created
+          }
+
+          if (!profile) throw new Error('Failed to load profile')
 
           if (!(profile as Profile).is_active) {
             await supabase.auth.signOut()

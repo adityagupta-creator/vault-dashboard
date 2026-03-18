@@ -91,8 +91,9 @@ function App() {
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) throw error
         if (session?.user) {
-          const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+          const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
           if (profile && isMounted) setUser(profile)
+          else if (isMounted) setUser(null)
         } else {
           if (isMounted) setUser(null)
         }
@@ -105,7 +106,7 @@ function App() {
 
       const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
-          const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+          const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
           if (profile && isMounted) setUser(profile)
         } else {
           if (isMounted) setUser(null)
