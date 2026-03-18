@@ -1,37 +1,39 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
+import { usePermissionsStore } from '../store/permissions'
 import { 
   LayoutDashboard, ShoppingCart, Archive, FileSpreadsheet,
-  LogOut, Menu, X, PanelLeftClose, PanelLeftOpen, Settings
+  LogOut, Menu, X, PanelLeftClose, PanelLeftOpen, Settings, Shield
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Hardik Coin', href: '/hardik-coin', icon: FileSpreadsheet },
-  { name: 'Meghna - Client Orders', href: '/client-orders', icon: ShoppingCart },
-  { name: 'Vault Inventory', href: '/vault', icon: Archive },
-  { name: 'Settings', href: '/settings', icon: Settings },
+const allNavigation = [
+  { name: 'Dashboard', href: '/', slug: 'dashboard', icon: LayoutDashboard },
+  { name: 'Hardik Coin', href: '/hardik-coin', slug: 'hardik-coin', icon: FileSpreadsheet },
+  { name: 'Meghna - Client Orders', href: '/client-orders', slug: 'client-orders', icon: ShoppingCart },
+  { name: 'Vault Inventory', href: '/vault', slug: 'vault', icon: Archive },
+  { name: 'Settings', href: '/settings', slug: 'settings', icon: Settings },
+  { name: 'Admin Panel', href: '/admin', slug: 'admin', icon: Shield },
 ]
 
 export default function MainLayout() {
   const { user, signOut } = useAuthStore()
+  const hasAccess = usePermissionsStore((s) => s.hasAccess)
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  const navigation = useMemo(() => {
+    if (user?.role === 'admin') return allNavigation
+    return allNavigation.filter((item) => hasAccess(item.slug))
+  }, [user, hasAccess])
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
   }
 
-  const roleLabels: Record<string, string> = {
-    trading_agent: 'Trading Agent',
-    finance: 'Finance Team',
-    reconciliation: 'Operations',
-    vault: 'Vault Team',
-    management: 'Management'
-  }
+  const roleLabel = user?.role === 'admin' ? 'Admin' : 'User'
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -106,7 +108,7 @@ export default function MainLayout() {
             {!sidebarCollapsed && (
               <div className="ml-2 min-w-0 flex-1">
                 <p className="text-[11px] font-medium text-white truncate">{user?.full_name || user?.email}</p>
-                <p className="text-[10px] text-slate-400">{user?.role && roleLabels[user.role]}</p>
+                <p className="text-[10px] text-slate-400">{roleLabel}</p>
               </div>
             )}
           </div>

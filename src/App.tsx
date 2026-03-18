@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/auth'
+import { usePermissionsStore, subscribeToPermissionChanges } from './store/permissions'
 import { useEffect, useState } from 'react'
 import { supabase } from './api/supabase'
 
@@ -10,6 +11,8 @@ import ClientOrdersPage from './pages/ClientOrders'
 import HardikCoinPage from './pages/HardikCoin'
 import VaultPage from './pages/Vault'
 import SettingsPage from './pages/Settings'
+import AdminPage from './pages/Admin'
+import AccessDenied from './pages/AccessDenied'
 
 const AUTH_TIMEOUT_MS = 8_000
 
@@ -32,8 +35,36 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function PageGuard({ slug, children }: { slug: string; children: React.ReactNode }) {
+  const hasAccess = usePermissionsStore((s) => s.hasAccess)
+  const fetched = usePermissionsStore((s) => s.fetched)
+  const loading = usePermissionsStore((s) => s.loading)
+  const user = useAuthStore((s) => s.user)
+
+  if (!fetched || loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+    </div>
+  )
+
+  if (user?.role === 'admin') return <>{children}</>
+  if (!hasAccess(slug)) return <AccessDenied />
+  return <>{children}</>
+}
+
 function App() {
-  const { setUser, setLoading } = useAuthStore()
+  const { setUser, setLoading, user } = useAuthStore()
+  const { fetchPermissions, reset } = usePermissionsStore()
+
+  useEffect(() => {
+    if (user) {
+      fetchPermissions()
+      const unsub = subscribeToPermissionChanges()
+      return unsub
+    } else {
+      reset()
+    }
+  }, [user, fetchPermissions, reset])
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -105,11 +136,12 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-          <Route index element={<DashboardPage />} />
-          <Route path="client-orders" element={<ClientOrdersPage />} />
-          <Route path="hardik-coin" element={<HardikCoinPage />} />
-          <Route path="vault" element={<VaultPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route index element={<PageGuard slug="dashboard"><DashboardPage /></PageGuard>} />
+          <Route path="client-orders" element={<PageGuard slug="client-orders"><ClientOrdersPage /></PageGuard>} />
+          <Route path="hardik-coin" element={<PageGuard slug="hardik-coin"><HardikCoinPage /></PageGuard>} />
+          <Route path="vault" element={<PageGuard slug="vault"><VaultPage /></PageGuard>} />
+          <Route path="settings" element={<PageGuard slug="settings"><SettingsPage /></PageGuard>} />
+          <Route path="admin" element={<PageGuard slug="admin"><AdminPage /></PageGuard>} />
         </Route>
       </Routes>
     </BrowserRouter>

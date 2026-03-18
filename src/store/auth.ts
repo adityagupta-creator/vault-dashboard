@@ -11,6 +11,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
   hasRole: (roles: UserRole[]) => boolean
+  isAdmin: () => boolean
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -34,6 +35,11 @@ export const useAuthStore = create<AuthState>()(
             .eq('id', authData.user.id)
             .single()
           if (profileError) throw profileError
+
+          if (!(profile as Profile).is_active) {
+            await supabase.auth.signOut()
+            throw new Error('Your account has been deactivated. Contact your administrator.')
+          }
           
           set({ user: profile as Profile, isLoading: false })
           return { success: true }
@@ -51,6 +57,11 @@ export const useAuthStore = create<AuthState>()(
       hasRole: (roles: UserRole[]) => {
         const { user } = get()
         return user ? roles.includes(user.role) : false
+      },
+
+      isAdmin: () => {
+        const { user } = get()
+        return user?.role === 'admin'
       },
     }),
     {

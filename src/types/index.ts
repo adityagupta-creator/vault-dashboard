@@ -1,4 +1,4 @@
-export type UserRole = 'trading_agent' | 'finance' | 'reconciliation' | 'vault' | 'management'
+export type UserRole = 'admin' | 'user'
 
 export interface Profile {
   id: string
@@ -8,6 +8,21 @@ export interface Profile {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface AppPage {
+  id: string
+  slug: string
+  page_name: string
+  display_order: number
+}
+
+export interface UserPagePermission {
+  id: string
+  user_id: string
+  page_id: string
+  granted_by: string | null
+  created_at: string
 }
 
 export interface ClientOrder {
