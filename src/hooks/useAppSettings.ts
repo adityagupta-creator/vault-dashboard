@@ -1,10 +1,12 @@
 /**
  * Domain-specific hooks backed by the cloud app_settings table.
- * Replaces all localStorage usage for shared business state.
+ * Uses a single batched fetch for all settings and one Realtime channel.
  */
 
-import { useCallback, useMemo } from 'react'
-import { useAppSetting } from './useRealtimeSync'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { supabase } from '../api/supabase'
+import { withTimeout } from '../api/withTimeout'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface HardikCustomColumn {
   id: string
@@ -12,12 +14,140 @@ export interface HardikCustomColumn {
   position: number
 }
 
+type SettingsMap = Record<string, unknown>
+
+const POLL_INTERVAL_MS = 30_000
+
+let globalCache: SettingsMap | null = null
+let globalLoading = false
+let globalFetched = false
+const listeners = new Set<() => void>()
+
+function notify() {
+  listeners.forEach((fn) => fn())
+}
+
+async function fetchAllSettings(): Promise<SettingsMap> {
+  const { data, error } = await withTimeout(
+    supabase.from('app_settings').select('key, value'),
+    5_000
+  )
+  if (error) throw error
+  const map: SettingsMap = {}
+  for (const row of data ?? []) {
+    map[row.key] = row.value
+  }
+  return map
+}
+
+async function loadSettings() {
+  if (globalLoading) return
+  globalLoading = true
+  notify()
+  try {
+    globalCache = await fetchAllSettings()
+    globalFetched = true
+  } catch (e) {
+    console.error('[useAppSettings] batch fetch:', e)
+    globalFetched = true
+  } finally {
+    globalLoading = false
+    notify()
+  }
+}
+
+let channelRef: RealtimeChannel | null = null
+let pollTimer: ReturnType<typeof setInterval> | null = null
+let subscriberCount = 0
+
+function subscribe() {
+  subscriberCount++
+  if (subscriberCount === 1) {
+    if (!globalFetched) loadSettings()
+
+    channelRef = supabase
+      .channel('app-settings-batch')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_settings' },
+        (payload) => {
+          if (payload.new && typeof payload.new === 'object' && 'key' in payload.new && 'value' in payload.new) {
+            const { key, value } = payload.new as { key: string; value: unknown }
+            globalCache = { ...globalCache, [key]: value }
+            notify()
+          }
+        }
+      )
+      .subscribe()
+
+    pollTimer = setInterval(loadSettings, POLL_INTERVAL_MS)
+  }
+}
+
+function unsubscribe() {
+  subscriberCount--
+  if (subscriberCount <= 0) {
+    subscriberCount = 0
+    if (channelRef) {
+      supabase.removeChannel(channelRef)
+      channelRef = null
+    }
+    if (pollTimer) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
+  }
+}
+
+function useSetting<T>(key: string, defaultValue: T): [T, (v: T) => Promise<void>, boolean] {
+  const [, forceRender] = useState(0)
+  const listenerRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    const listener = () => forceRender((n) => n + 1)
+    listenerRef.current = listener
+    listeners.add(listener)
+    subscribe()
+
+    return () => {
+      listeners.delete(listener)
+      unsubscribe()
+    }
+  }, [])
+
+  const value: T = globalCache && key in globalCache
+    ? (globalCache[key] as T)
+    : defaultValue
+
+  const loading = !globalFetched
+
+  const setValue = useCallback(
+    async (newValue: T) => {
+      globalCache = { ...globalCache, [key]: newValue }
+      notify()
+      try {
+        const { error } = await supabase
+          .from('app_settings')
+          .upsert(
+            { key, value: newValue as any, updated_at: new Date().toISOString() },
+            { onConflict: 'key' }
+          )
+        if (error) throw error
+      } catch (e) {
+        console.error(`[useAppSetting] upsert ${key}:`, e)
+      }
+    },
+    [key]
+  )
+
+  return [value, setValue, loading]
+}
+
 /**
  * Cloud-backed custom columns for Hardik Coin.
- * Returns [columns, { addColumn, renameColumn, deleteColumn, setColumns }]
  */
 export function useCustomColumns() {
-  const [columns, setColumns, loading] = useAppSetting<HardikCustomColumn[]>(
+  const [columns, setColumns, loading] = useSetting<HardikCustomColumn[]>(
     'hardik_custom_columns',
     []
   )
@@ -56,7 +186,7 @@ export function useCustomColumns() {
  * Cloud-backed row order for Hardik Coin.
  */
 export function useRowOrder() {
-  const [rowOrder, setRowOrder, loading] = useAppSetting<string[]>(
+  const [rowOrder, setRowOrder, loading] = useSetting<string[]>(
     'hardik_row_order',
     []
   )
@@ -64,25 +194,22 @@ export function useRowOrder() {
 }
 
 /**
- * Cloud-backed latest import highlight IDs, shared across all users.
+ * Cloud-backed latest import highlight IDs.
  */
 export function useLatestImportIds() {
-  const [ids, setIds, loading] = useAppSetting<string[]>(
+  const [ids, setIds, loading] = useSetting<string[]>(
     'hardik_latest_import_ids',
     []
   )
-
   const idSet = useMemo(() => new Set(ids), [ids])
-
   return [idSet, setIds, loading] as const
 }
 
 /**
  * Cloud-backed notification email recipients.
- * Returns [emails, { addEmail, removeEmail }, loading]
  */
 export function useNotificationEmails() {
-  const [emails, setEmails, loading] = useAppSetting<string[]>(
+  const [emails, setEmails, loading] = useSetting<string[]>(
     'notification_emails',
     []
   )

@@ -4,12 +4,11 @@ import { usePermissionsStore, subscribeToPermissionChanges } from './store/permi
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './api/supabase'
 
-// One-time cleanup of old localStorage keys from previous versions
 try {
   ['safegold-auth', 'sb-wmvgvwqvmukbclemxrif-auth-token', 'safegold-last-seen'].forEach(
     (key) => localStorage.removeItem(key)
   )
-} catch { /* ignore in environments without localStorage */ }
+} catch { /* ignore */ }
 
 import MainLayout from './layouts/MainLayout'
 import LoginPage from './pages/Login'
@@ -21,7 +20,7 @@ import SettingsPage from './pages/Settings'
 import AdminPage from './pages/Admin'
 import AccessDenied from './pages/AccessDenied'
 
-const AUTH_TIMEOUT_MS = 8_000
+const AUTH_TIMEOUT_MS = 5_000
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuthStore()
@@ -48,15 +47,24 @@ function PageGuard({ slug, children }: { slug: string; children: React.ReactNode
   const loading = usePermissionsStore((s) => s.loading)
   const user = useAuthStore((s) => s.user)
 
-  if (!fetched || loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
-    </div>
-  )
+  const isAdmin = user?.role === 'admin'
+  const permsPending = !fetched || loading
+  const hasPermission = isAdmin || allowedSlugs.includes(slug)
 
-  if (user?.role === 'admin') return <>{children}</>
-  if (!allowedSlugs.includes(slug)) return <AccessDenied />
-  return <>{children}</>
+  if (!permsPending && !hasPermission) return <AccessDenied />
+
+  return (
+    <>
+      {permsPending && !isAdmin && (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+        </div>
+      )}
+      <div style={permsPending && !isAdmin ? { position: 'absolute', left: '-9999px', visibility: 'hidden' } : undefined}>
+        {children}
+      </div>
+    </>
+  )
 }
 
 function App() {
@@ -69,25 +77,28 @@ function App() {
     let subscription: { unsubscribe: () => void } | null = null
     let safetyTimer: ReturnType<typeof setTimeout> | null = null
 
-    const loadPermissionsFor = async (userId: string | null) => {
-      if (!isMounted) return
-      if (userId) {
-        await fetchPermissions()
-        if (isMounted && !permSubRef.current) {
-          permSubRef.current = subscribeToPermissionChanges()
-        }
-      } else {
-        permSubRef.current?.()
-        permSubRef.current = null
-        reset()
+    const setupPermSub = () => {
+      if (isMounted && !permSubRef.current) {
+        permSubRef.current = subscribeToPermissionChanges()
       }
     }
 
-    const initAuth = async () => {
-      try {
-        const hasPersistedUser = useAuthStore.getState().user != null
-        if (!hasPersistedUser) setLoading(true)
+    const teardownPerm = () => {
+      permSubRef.current?.()
+      permSubRef.current = null
+      reset()
+    }
 
+    const initAuth = async () => {
+      const hydratedUser = useAuthStore.getState().user
+
+      if (hydratedUser) {
+        fetchPermissions().then(setupPermSub)
+      } else {
+        setLoading(true)
+      }
+
+      try {
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) throw error
 
@@ -99,23 +110,27 @@ function App() {
             .maybeSingle()
 
           if (profile && isMounted) {
+            const userChanged = !hydratedUser || hydratedUser.id !== profile.id || hydratedUser.role !== profile.role
             setUser(profile)
-            await loadPermissionsFor(profile.id)
+            if (userChanged) {
+              await fetchPermissions()
+              setupPermSub()
+            }
           } else if (isMounted) {
             setUser(null)
-            await loadPermissionsFor(null)
+            teardownPerm()
           }
         } else {
           if (isMounted) {
             setUser(null)
-            await loadPermissionsFor(null)
+            teardownPerm()
           }
         }
       } catch (error) {
         console.error('Auth init error:', error)
         if (isMounted) {
           setUser(null)
-          await loadPermissionsFor(null)
+          teardownPerm()
         }
       } finally {
         if (isMounted) setLoading(false)
@@ -130,12 +145,13 @@ function App() {
             .maybeSingle()
           if (profile && isMounted) {
             setUser(profile)
-            await loadPermissionsFor(profile.id)
+            await fetchPermissions()
+            setupPermSub()
           }
         } else {
           if (isMounted) {
             setUser(null)
-            await loadPermissionsFor(null)
+            teardownPerm()
           }
         }
         if (isMounted) setLoading(false)
@@ -145,7 +161,7 @@ function App() {
 
     safetyTimer = setTimeout(() => {
       if (isMounted && useAuthStore.getState().isLoading) {
-        console.warn('Auth init safety timeout reached, forcing loading=false')
+        console.warn('Auth init safety timeout reached')
         setLoading(false)
       }
     }, AUTH_TIMEOUT_MS)
